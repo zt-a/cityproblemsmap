@@ -41,7 +41,9 @@
       "Bash(find src:*)",
       "Bash(grep -E \"\\\\.py$\")",
       "Bash(python -c \"from app.main import app; import json; print\\(json.dumps\\(app.openapi\\(\\), indent=2\\)\\)\")",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)"
     ]
   }
 }
