@@ -1,26 +1,16 @@
 import axios from 'axios'
+import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { OpenAPI } from './generated/core/OpenAPI'
-import { AuthService } from './generated/services/AuthService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-
-// Настройка OpenAPI клиента для generated services
-OpenAPI.BASE = API_BASE_URL
-OpenAPI.WITH_CREDENTIALS = true
-OpenAPI.CREDENTIALS = 'include'
-
-// Функция для установки токена в OpenAPI
-export const setAuthToken = (token: string | null) => {
-  if (token) {
-    OpenAPI.TOKEN = token
-  } else {
-    OpenAPI.TOKEN = undefined
-  }
-}
 
 // Функции для работы с токенами
 export const getStoredToken = (): string | null => {
   return localStorage.getItem('access_token')
+}
+
+export const getStoredRefreshToken = (): string | null => {
+  return localStorage.getItem('refresh_token')
 }
 
 export const saveTokens = (accessToken: string, refreshToken: string) => {
@@ -35,25 +25,38 @@ export const clearTokens = () => {
   setAuthToken(null)
 }
 
-// Инициализация токена при загрузке
-const storedToken = getStoredToken()
-if (storedToken) {
-  setAuthToken(storedToken)
+// Функция для установки токена в OpenAPI
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    OpenAPI.TOKEN = token
+  } else {
+    OpenAPI.TOKEN = undefined
+  }
 }
 
-// Axios клиент для legacy кода (если нужен)
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL + '/api/v1',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
+// Флаг для предотвращения множественных refresh запросов
+let isRefreshing = false
+let failedQueue: Array<{
+  resolve: (token: string) => void
+  reject: (error: unknown) => void
+}> = []
 
-// Request interceptor для добавления JWT токена
-apiClient.interceptors.request.use(
-  (config) => {
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token!)
+    }
+  })
+  failedQueue = []
+}
+
+// Глобальный request interceptor для axios
+axios.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
     const token = getStoredToken()
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
@@ -63,33 +66,79 @@ apiClient.interceptors.request.use(
   }
 )
 
-// Response interceptor для обработки ошибок и refresh token
-apiClient.interceptors.response.use(
+// Глобальный response interceptor для axios
+axios.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-    // Если 401 и это не повторный запрос
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Если 401 и это не повторный запрос и не запрос на refresh/login/register
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/register')
+    ) {
+      if (isRefreshing) {
+        // Если уже идёт refresh, добавляем запрос в очередь
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        })
+          .then((token) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`
+            }
+            return axios(originalRequest)
+          })
+          .catch((err) => {
+            return Promise.reject(err)
+          })
+      }
+
       originalRequest._retry = true
+      isRefreshing = true
+
+      const refreshToken = getStoredRefreshToken()
+      if (!refreshToken) {
+        clearTokens()
+        window.location.href = '/login'
+        return Promise.reject(error)
+      }
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token')
-        if (refreshToken) {
-          const response = await AuthService.refreshApiV1AuthRefreshPost({
-            refresh_token: refreshToken,
-          })
+        // Создаём новый axios instance без interceptors для refresh запроса
+        const refreshAxios = axios.create()
+        const response = await refreshAxios.post(
+          `${API_BASE_URL}/api/v1/auth/refresh`,
+          { refresh_token: refreshToken },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        )
 
-          saveTokens(response.access_token, response.refresh_token)
+        const { access_token, refresh_token } = response.data
+        saveTokens(access_token, refresh_token)
 
-          originalRequest.headers.Authorization = `Bearer ${response.access_token}`
-          return apiClient(originalRequest)
+        // Обрабатываем очередь запросов
+        processQueue(null, access_token)
+
+        // Повторяем оригинальный запрос
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${access_token}`
         }
+        return axios(originalRequest)
       } catch (refreshError) {
-        // Refresh token истёк, выходим
+        // Refresh token истёк или невалиден
+        processQueue(refreshError, null)
         clearTokens()
         window.location.href = '/login'
         return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
       }
     }
 
@@ -97,4 +146,18 @@ apiClient.interceptors.response.use(
   }
 )
 
-export default apiClient
+// Настройка OpenAPI клиента для generated services
+OpenAPI.BASE = API_BASE_URL
+OpenAPI.WITH_CREDENTIALS = true
+OpenAPI.CREDENTIALS = 'include'
+
+// Инициализация токена при загрузке
+const storedToken = getStoredToken()
+if (storedToken) {
+  setAuthToken(storedToken)
+}
+
+// Export axios для использования в других местах
+export const apiClient = axios
+
+export default axios

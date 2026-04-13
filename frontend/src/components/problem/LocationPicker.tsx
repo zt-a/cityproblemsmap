@@ -101,7 +101,7 @@ export default function LocationPicker({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[10002] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-dark-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-dark-card border-b border-border p-4 flex items-center justify-between flex-shrink-0">

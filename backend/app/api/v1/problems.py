@@ -7,7 +7,7 @@ from sqlalchemy import func
 from app.database import get_db
 from app.models.problem import Problem, ProblemStatus
 from app.models.user import User, UserRole
-from app.schemas.problem import ProblemCreate, ProblemStatusUpdate, ProblemPublic, ProblemList
+from app.schemas.problem import ProblemCreate, ProblemUpdate, ProblemStatusUpdate, ProblemPublic, ProblemList
 from app.services.versioning import create_new_version
 from app.services.geo import check_user_city
 from app.api.deps import get_current_user
@@ -203,6 +203,77 @@ def get_problem_history(entity_id: int, db: Session = Depends(get_db)):
     if not versions:
         raise HTTPException(status_code=404, detail="Проблема не найдена")
     return [_to_public(p) for p in versions]
+
+
+@router.patch("/{entity_id}", response_model=ProblemPublic)
+def update_problem(
+    entity_id:    int,
+    data:         ProblemUpdate,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(get_current_user),
+):
+    """
+    Обновить проблему (только автор).
+    Можно изменить: title, description, address, location, problem_type, tags.
+    Создаёт новую версию — история изменений сохраняется.
+    """
+    problem = (
+        db.query(Problem)
+        .filter_by(entity_id=entity_id, is_current=True)
+        .first()
+    )
+    if not problem:
+        raise HTTPException(status_code=404, detail="Проблема не найдена")
+
+    # Только автор может редактировать
+    if problem.author_entity_id != current_user.entity_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только автор может редактировать проблему",
+        )
+
+    # Собираем поля для обновления
+    update_fields = data.model_dump(exclude_unset=True)
+
+    # Если обновляются координаты, создаём новый PostGIS POINT
+    lat = update_fields.pop("latitude", None)
+    lon = update_fields.pop("longitude", None)
+
+    if lat is not None and lon is not None:
+        update_fields["location"] = ST_SetSRID(
+            ST_MakePoint(lon, lat), 4326
+        )
+    elif lat is not None or lon is not None:
+        # Если передана только одна координата, получаем вторую из текущей проблемы
+        from geoalchemy2.shape import to_shape
+        point = to_shape(problem.location)
+        current_lon, current_lat = point.x, point.y
+
+        final_lat = lat if lat is not None else current_lat
+        final_lon = lon if lon is not None else current_lon
+
+        update_fields["location"] = ST_SetSRID(
+            ST_MakePoint(final_lon, final_lat), 4326
+        )
+
+    if not update_fields:
+        # Нет изменений
+        return _to_public(problem)
+
+    updated = create_new_version(
+        db            = db,
+        model_class   = Problem,
+        entity_id     = entity_id,
+        changed_by_id = current_user.entity_id,
+        change_reason = "problem_updated",
+        **update_fields,
+    )
+
+    # Инвалидируем кеш проблемы и списка
+    invalidate_problem_cache(entity_id)
+    CacheService.delete_pattern(f"problems:list:{updated.city}")
+
+    return _to_public(updated)
 
 
 @router.patch("/{entity_id}/status", response_model=ProblemPublic)

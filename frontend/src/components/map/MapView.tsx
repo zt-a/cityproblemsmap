@@ -3,9 +3,33 @@ import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import { ZoomIn, ZoomOut, Locate, X, Maximize2, Sun, Moon } from 'lucide-react'
+import { ZoomIn, ZoomOut, Locate, X, Maximize2, Sun, Moon, Map as MapIcon } from 'lucide-react'
 import { getInitialLocation, getUserLocation, saveLocation } from '../../utils/geolocation'
 import type { ProblemPublic } from '../../api/generated/models/ProblemPublic'
+
+// Доступные темы карты
+const MAP_THEMES = {
+  dark: {
+    name: 'Тёмная',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+  light: {
+    name: 'Светлая',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  satellite: {
+    name: 'Спутник',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri',
+  },
+  streets: {
+    name: 'Улицы',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+}
 
 interface MapViewProps {
   onMarkerClick: (id: number) => void
@@ -13,6 +37,7 @@ interface MapViewProps {
   isMapExpanded?: boolean
   selectedProblemId?: number | null
   mapCenter?: [number, number] | null
+  mapZoom?: number
   isPanelOpen?: boolean
   problems?: ProblemPublic[]
 }
@@ -150,7 +175,7 @@ function MarkerWithRef({ problem, isSelected, onMarkerClick, markersRef }: {
   )
 }
 
-function MapController({ center }: { center: [number, number] | null }) {
+function MapController({ center, zoom }: { center: [number, number] | null; zoom?: number }) {
   const map = useMap()
 
   useEffect(() => {
@@ -160,10 +185,10 @@ function MapController({ center }: { center: [number, number] | null }) {
 
       // Small delay to ensure size is updated
       setTimeout(() => {
-        map.setView(center, 15, { animate: true })
+        map.setView(center, zoom || 15, { animate: true })
       }, 100)
     }
-  }, [center, map])
+  }, [center, zoom, map])
 
   return null
 }
@@ -217,15 +242,28 @@ export default function MapView({
   isMapExpanded = true,
   selectedProblemId,
   mapCenter,
+  mapZoom,
   isPanelOpen,
   problems = []
 }: MapViewProps) {
   const mapRef = useRef<L.Map | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<{ [key: number]: L.Marker }>({})
+  const themeMenuRef = useRef<HTMLDivElement>(null)
   const [initialCenter, setInitialCenter] = useState<[number, number]>([42.8746, 74.5698]) // Default: Bishkek
   const [isLocating, setIsLocating] = useState(false)
-  const [isDarkTheme, setIsDarkTheme] = useState(true) // Dark theme by default
+
+  // Загрузить сохранённую тему из localStorage
+  const [mapTheme, setMapTheme] = useState<keyof typeof MAP_THEMES>(() => {
+    const savedTheme = localStorage.getItem('mapTheme')
+    return (savedTheme as keyof typeof MAP_THEMES) || 'dark'
+  })
+  const [showThemeMenu, setShowThemeMenu] = useState(false) // Показать меню выбора темы
+
+  // Сохранить тему в localStorage при изменении
+  useEffect(() => {
+    localStorage.setItem('mapTheme', mapTheme)
+  }, [mapTheme])
 
   // Получить начальное местоположение по IP при монтировании
   useEffect(() => {
@@ -233,6 +271,23 @@ export default function MapView({
       setInitialCenter([location.latitude, location.longitude])
     })
   }, [])
+
+  // Закрыть меню темы при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
+        setShowThemeMenu(false)
+      }
+    }
+
+    if (showThemeMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showThemeMenu])
 
   // Open popup for selected marker
   useEffect(() => {
@@ -300,10 +355,10 @@ export default function MapView({
         ref={mapRef}
         style={{ background: '#0B1220' }}
       >
-        {/* Dark theme tile layer */}
+        {/* Dynamic theme tile layer */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution=""
+          url={MAP_THEMES[mapTheme].url}
+          attribution={MAP_THEMES[mapTheme].attribution}
         />
 
         {/* Markers */}
@@ -320,7 +375,7 @@ export default function MapView({
           )
         })}
 
-        <MapController center={mapCenter} />
+        <MapController center={mapCenter} zoom={mapZoom} />
         <MapResizeHandler isMapExpanded={isMapExpanded} isPanelOpen={isPanelOpen} />
       </MapContainer>
 
@@ -367,6 +422,37 @@ export default function MapView({
             <Locate className="w-5 h-5 text-text-primary" />
           )}
         </button>
+
+        {/* Theme selector button */}
+        <div className="relative" ref={themeMenuRef}>
+          <button
+            onClick={() => setShowThemeMenu(!showThemeMenu)}
+            className="w-10 h-10 bg-dark-card hover:bg-dark-hover border border-border rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 active:scale-95"
+            title="Изменить тему карты"
+          >
+            <MapIcon className="w-5 h-5 text-text-primary" />
+          </button>
+
+          {/* Theme menu */}
+          {showThemeMenu && (
+            <div className="absolute bottom-0 right-12 bg-dark-card border border-border rounded-xl shadow-xl p-2 min-w-[150px]">
+              {Object.entries(MAP_THEMES).map(([key, theme]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setMapTheme(key as keyof typeof MAP_THEMES)
+                    setShowThemeMenu(false)
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors ${
+                    mapTheme === key ? 'bg-primary/20 text-primary' : 'text-text-primary'
+                  }`}
+                >
+                  {theme.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

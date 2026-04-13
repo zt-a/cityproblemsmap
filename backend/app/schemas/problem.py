@@ -40,6 +40,40 @@ class ProblemCreate(BaseModel):
         return v
 
 
+class ProblemUpdate(BaseModel):
+    """Обновление проблемы (только автор)."""
+    title:        str | None = None
+    description:  str | None = None
+    address:      str | None = None
+    latitude:     float | None = None
+    longitude:    float | None = None
+    problem_type: ProblemType | None = None
+    tags:         list[str] | None = None
+
+    @field_validator("title")
+    @classmethod
+    def title_valid(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip()
+            if len(v) < 5:
+                raise ValueError("Минимум 5 символов")
+        return v
+
+    @field_validator("latitude")
+    @classmethod
+    def lat_valid(cls, v: float | None) -> float | None:
+        if v is not None and not (-90 <= v <= 90):
+            raise ValueError("Широта должна быть от -90 до 90")
+        return v
+
+    @field_validator("longitude")
+    @classmethod
+    def lon_valid(cls, v: float | None) -> float | None:
+        if v is not None and not (-180 <= v <= 180):
+            raise ValueError("Долгота должна быть от -180 до 180")
+        return v
+
+
 class ProblemStatusUpdate(BaseModel):
     """Обновление статуса проблемы."""
     status:          ProblemStatus

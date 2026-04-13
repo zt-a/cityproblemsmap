@@ -35,13 +35,7 @@
       "Bash(python -m app.generate_openapi)",
       "Bash(grep -E \"\\\\.py$|\\\\.sh$\")",
       "Bash(ls /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/backend/*.sh /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/backend/scripts/*)",
-      "Bash(npx openapi-typescript-codegen:*)",
-      "mcp__ide__getDiagnostics",
-      "Bash(chmod +x:*)",
-      "Bash(find src:*)",
-      "Bash(grep -E \"\\\\.py$\")",
-      "Bash(python -c \"from app.main import app; import json; print\\(json.dumps\\(app.openapi\\(\\), indent=2\\)\\)\")",
-      "Bash(docker compose:*)"
+      "Bash(npx openapi-typescript-codegen:*)"
     ]
   }
 }

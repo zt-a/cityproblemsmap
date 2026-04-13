@@ -205,6 +205,81 @@ def get_vote_stats(
     )
 
 
+@router.delete("/{problem_entity_id}/votes/my", status_code=204)
+@limiter.limit("20/hour")  # 20 удалений в час
+def delete_my_vote(
+    request:           Request,
+    problem_entity_id: int,
+    db:                Session = Depends(get_db),
+    current_user:      User    = Depends(get_current_user),
+):
+    """
+    Удалить свой голос (отменить голосование).
+
+    На самом деле создаёт новую версию голоса с is_current=False,
+    чтобы сохранить историю в append-only архитектуре.
+    """
+
+    # Найти текущий голос пользователя
+    existing_vote = (
+        db.query(Vote)
+        .filter_by(
+            problem_entity_id = problem_entity_id,
+            user_entity_id    = current_user.entity_id,
+            is_current        = True,
+        )
+        .first()
+    )
+
+    if not existing_vote:
+        raise HTTPException(
+            status_code=404,
+            detail="Голос не найден - ты ещё не голосовал"
+        )
+
+    # Пометить текущий голос как неактуальный
+    # Это единственный UPDATE в системе
+    from datetime import datetime, timezone
+    existing_vote.is_current = False
+    existing_vote.superseded_at = datetime.now(timezone.utc)
+
+    db.commit()
+
+    # Пересчитать scores проблемы
+    try:
+        from app.services.scoring import recalculate_scores
+        recalculate_scores(
+            db                = db,
+            problem_entity_id = problem_entity_id,
+            changed_by_id     = current_user.entity_id,
+        )
+    except Exception:
+        from app.services.scoring import recalculate_scores
+        recalculate_scores(
+            db                = db,
+            problem_entity_id = problem_entity_id,
+            changed_by_id     = current_user.entity_id,
+        )
+
+    invalidate_problem_cache(problem_entity_id)
+
+    # Отправить WebSocket уведомление
+    try:
+        from app.services.notifications import broadcast_problem_update
+        broadcast_problem_update(
+            problem_id=problem_entity_id,
+            update_type="vote_deleted",
+            data={
+                "user_id": current_user.entity_id,
+            }
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to broadcast vote deletion: {e}")
+
+    return None
+
+
 @router.get("/{problem_entity_id}/votes/history", response_model=list[VotePublic])
 def get_votes_history(
     problem_entity_id: int,

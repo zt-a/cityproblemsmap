@@ -33,10 +33,18 @@ if settings.SENTRY_DSN:
 async def lifespan(app: FastAPI):
     # Синхронный init_db безопасно запускаем в пуле потоков
     await run_in_threadpool(init_db)
-    
+
     # Создание папки для медиа тоже синхронная операция — можно напрямую
     Path(settings.MEDIA_LOCAL_DIR).mkdir(exist_ok=True)
-    
+
+    # Генерация openapi.json при запуске
+    import json
+    openapi_schema = app.openapi()
+    openapi_path = Path(__file__).parent.parent / "openapi.json"
+    with open(openapi_path, "w", encoding="utf-8") as f:
+        json.dump(openapi_schema, f, ensure_ascii=False, indent=2)
+    print(f"✅ OpenAPI schema generated: {openapi_path}")
+
     yield
 
 

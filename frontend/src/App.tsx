@@ -8,6 +8,7 @@ import MapPage from './pages/MapPage'
 import ProblemDetailPage from './pages/ProblemDetailPage'
 import ProblemsPage from './pages/ProblemsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
+import UserProfilePage from './pages/UserProfilePage'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Profile } from './pages/Profile'
@@ -65,6 +66,7 @@ function AppContent() {
       <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
       <Route path="/map" element={<MainLayout><MapPage /></MainLayout>} />
       <Route path="/problems/:id" element={<MainLayout><ProblemDetailPage /></MainLayout>} />
+      <Route path="/users/:userId" element={<MainLayout><UserProfilePage /></MainLayout>} />
       <Route path="/problems" element={<ProtectedRoute><MainLayout><ProblemsPage /></MainLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><MainLayout><AnalyticsPage /></MainLayout></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />

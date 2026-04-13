@@ -199,6 +199,26 @@ def unfollow_user(
     return {"message": "Successfully unfollowed"}
 
 
+@router.get("/follow/{user_id}/status")
+def get_follow_status(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Проверить статус подписки на пользователя"""
+    follow = (
+        db.query(Follow)
+        .filter_by(
+            follower_entity_id=current_user.entity_id,
+            following_entity_id=user_id,
+            is_current=True,
+        )
+        .first()
+    )
+
+    return {"is_following": follow is not None}
+
+
 @router.get("/feed")
 def get_activity_feed(
     limit: int = 20,

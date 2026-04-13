@@ -2,14 +2,15 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import axios from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse, AxiosInstance } from 'axios';
+
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
 import type { ApiResult } from './ApiResult';
 import { CancelablePromise } from './CancelablePromise';
 import type { OnCancel } from './CancelablePromise';
 import type { OpenAPIConfig } from './OpenAPI';
-import { AuthService } from '../services/AuthService'
-import { getStoredToken, saveTokens, clearTokens } from '../../client'
 
 export const isDefined = <T>(value: T | null | undefined): value is Exclude<T, null | undefined> => {
     return value !== undefined && value !== null;
@@ -38,6 +39,10 @@ export const isBlob = (value: any): value is Blob => {
 
 export const isFormData = (value: any): value is FormData => {
     return value instanceof FormData;
+};
+
+export const isSuccess = (status: number): boolean => {
+    return status >= 200 && status < 300;
 };
 
 export const base64 = (str: string): string => {
@@ -138,7 +143,7 @@ export const resolve = async <T>(options: ApiRequestOptions, resolver?: T | Reso
     return resolver;
 };
 
-export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptions): Promise<Headers> => {
+export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptions, formData?: FormData): Promise<Record<string, string>> => {
     const [token, username, password, additionalHeaders] = await Promise.all([
         resolve(options, config.TOKEN),
         resolve(options, config.USERNAME),
@@ -146,16 +151,19 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
         resolve(options, config.HEADERS),
     ]);
 
+    const formHeaders = {}; // Browser FormData doesn't have getHeaders() method
+
     const headers = Object.entries({
         Accept: 'application/json',
         ...additionalHeaders,
         ...options.headers,
+        ...formHeaders,
     })
-        .filter(([_, value]) => isDefined(value))
-        .reduce((headers, [key, value]) => ({
-            ...headers,
-            [key]: String(value),
-        }), {} as Record<string, string>);
+    .filter(([_, value]) => isDefined(value))
+    .reduce((headers, [key, value]) => ({
+        ...headers,
+        [key]: String(value),
+    }), {} as Record<string, string>);
 
     if (isStringWithValue(token)) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -178,52 +186,54 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
         }
     }
 
-    return new Headers(headers);
+    return headers;
 };
 
 export const getRequestBody = (options: ApiRequestOptions): any => {
-    if (options.body !== undefined) {
-        if (options.mediaType?.includes('/json')) {
-            return JSON.stringify(options.body)
-        } else if (isString(options.body) || isBlob(options.body) || isFormData(options.body)) {
-            return options.body;
-        } else {
-            return JSON.stringify(options.body);
-        }
+    if (options.body) {
+        return options.body;
     }
     return undefined;
 };
 
-export const sendRequest = async (
+export const sendRequest = async <T>(
     config: OpenAPIConfig,
     options: ApiRequestOptions,
     url: string,
     body: any,
     formData: FormData | undefined,
-    headers: Headers,
-    onCancel: OnCancel
-): Promise<Response> => {
-    const controller = new AbortController();
+    headers: Record<string, string>,
+    onCancel: OnCancel,
+    axiosClient: AxiosInstance
+): Promise<AxiosResponse<T>> => {
+    const source = axios.CancelToken.source();
 
-    const request: RequestInit = {
+    const requestConfig: AxiosRequestConfig = {
+        url,
         headers,
-        body: body ?? formData,
+        data: body ?? formData,
         method: options.method,
-        signal: controller.signal,
+        withCredentials: config.WITH_CREDENTIALS,
+        withXSRFToken: config.CREDENTIALS === 'include' ? config.WITH_CREDENTIALS : false,
+        cancelToken: source.token,
     };
 
-    if (config.WITH_CREDENTIALS) {
-        request.credentials = config.CREDENTIALS;
+    onCancel(() => source.cancel('The user aborted a request.'));
+
+    try {
+        return await axiosClient.request(requestConfig);
+    } catch (error) {
+        const axiosError = error as AxiosError<T>;
+        if (axiosError.response) {
+            return axiosError.response;
+        }
+        throw error;
     }
-
-    onCancel(() => controller.abort());
-
-    return await fetch(url, request);
 };
 
-export const getResponseHeader = (response: Response, responseHeader?: string): string | undefined => {
+export const getResponseHeader = (response: AxiosResponse<any>, responseHeader?: string): string | undefined => {
     if (responseHeader) {
-        const content = response.headers.get(responseHeader);
+        const content = response.headers[responseHeader];
         if (isString(content)) {
             return content;
         }
@@ -231,22 +241,9 @@ export const getResponseHeader = (response: Response, responseHeader?: string): 
     return undefined;
 };
 
-export const getResponseBody = async (response: Response): Promise<any> => {
+export const getResponseBody = (response: AxiosResponse<any>): any => {
     if (response.status !== 204) {
-        try {
-            const contentType = response.headers.get('Content-Type');
-            if (contentType) {
-                const jsonTypes = ['application/json', 'application/problem+json']
-                const isJSON = jsonTypes.some(type => contentType.toLowerCase().startsWith(type));
-                if (isJSON) {
-                    return await response.json();
-                } else {
-                    return await response.text();
-                }
-            }
-        } catch (error) {
-            console.error(error);
-        }
+        return response.data;
     }
     return undefined;
 };
@@ -289,88 +286,37 @@ export const catchErrorCodes = (options: ApiRequestOptions, result: ApiResult): 
  * Request method
  * @param config The OpenAPI configuration object
  * @param options The request options from the service
+ * @param axiosClient The axios client instance to use
  * @returns CancelablePromise<T>
  * @throws ApiError
  */
-export const request = <T>(
-    config: OpenAPIConfig,
-    options: ApiRequestOptions
-): CancelablePromise<T> => {
+export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions, axiosClient: AxiosInstance = axios): CancelablePromise<T> => {
     return new CancelablePromise(async (resolve, reject, onCancel) => {
-        let isRetry = false
-
-        const doRequest = async (): Promise<T> => {
-            const url = getUrl(config, options)
-            const formData = getFormData(options)
-            const body = getRequestBody(options)
-            const headers = await getHeaders(config, options)
-
-            const response = await sendRequest(
-                config,
-                options,
-                url,
-                body,
-                formData,
-                headers,
-                onCancel
-            )
-
-            // 👉 ЛОВИМ 401 ДО обработки
-            if (response.status === 401 && !isRetry) {
-                isRetry = true
-
-                try {
-                    const refreshToken = localStorage.getItem('refresh_token')
-                    if (!refreshToken) throw new Error('No refresh token')
-
-                    const refreshResponse =
-                        await AuthService.refreshApiV1AuthRefreshPost({
-                            refresh_token: refreshToken,
-                        })
-
-                    saveTokens(
-                        refreshResponse.access_token,
-                        refreshResponse.refresh_token
-                    )
-
-                    // 🔑 обновляем токен для OpenAPI
-                    config.TOKEN = refreshResponse.access_token
-
-                    // 🔁 повторяем запрос
-                    return await doRequest()
-                } catch (err) {
-                    clearTokens()
-                    window.location.href = '/login'
-                    throw err
-                }
-            }
-
-            const responseBody = await getResponseBody(response)
-            const responseHeader = getResponseHeader(
-                response,
-                options.responseHeader
-            )
-
-            const result: ApiResult = {
-                url,
-                ok: response.ok,
-                status: response.status,
-                statusText: response.statusText,
-                body: responseHeader ?? responseBody,
-            }
-
-            catchErrorCodes(options, result)
-
-            return result.body
-        }
-
         try {
+            const url = getUrl(config, options);
+            const formData = getFormData(options);
+            const body = getRequestBody(options);
+            const headers = await getHeaders(config, options, formData);
+
             if (!onCancel.isCancelled) {
-                const data = await doRequest()
-                resolve(data)
+                const response = await sendRequest<T>(config, options, url, body, formData, headers, onCancel, axiosClient);
+                const responseBody = getResponseBody(response);
+                const responseHeader = getResponseHeader(response, options.responseHeader);
+
+                const result: ApiResult = {
+                    url,
+                    ok: isSuccess(response.status),
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: responseHeader ?? responseBody,
+                };
+
+                catchErrorCodes(options, result);
+
+                resolve(result.body);
             }
         } catch (error) {
-            reject(error)
+            reject(error);
         }
-    })
-}
+    });
+};

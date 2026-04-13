@@ -1,15 +1,27 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ProblemList from '../components/problem/ProblemList'
 import MapView from '../components/map/MapView'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useProblems } from '../hooks/useProblems'
 
 export default function MapPage() {
+  const [searchParams] = useSearchParams()
   const [selectedProblemId, setSelectedProblemId] = useState<number | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false) // Закрыта по умолчанию на /map
   const [isMapExpanded, setIsMapExpanded] = useState(true) // true = full, false = mini
-  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
   const startY = useRef(0)
+
+  // Читаем параметры из URL и инициализируем состояние
+  const lat = searchParams.get('lat')
+  const lng = searchParams.get('lng')
+  const zoom = searchParams.get('zoom')
+
+  const initialCenter = lat && lng ? [parseFloat(lat), parseFloat(lng)] as [number, number] : null
+  const initialZoom = zoom ? parseInt(zoom) : 13
+
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(initialCenter)
+  const [mapZoom, setMapZoom] = useState<number>(initialZoom)
 
   // Load problems from API
   const { data: problemsData } = useProblems({ limit: 100 })
@@ -172,8 +184,10 @@ export default function MapPage() {
           onMarkerClick={handleMarkerClick}
           selectedProblemId={selectedProblemId}
           mapCenter={mapCenter}
+          mapZoom={mapZoom}
           isPanelOpen={isPanelOpen}
           problems={problems}
+
         />
       </div>
 
@@ -196,6 +210,7 @@ export default function MapPage() {
               isMapExpanded={isMapExpanded}
               selectedProblemId={selectedProblemId}
               mapCenter={mapCenter}
+              mapZoom={mapZoom}
               problems={problems}
             />
           </div>

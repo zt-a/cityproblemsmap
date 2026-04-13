@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Home, Map, AlertCircle, BarChart3, Bell, User, Plus, Flag } from 'lucide-react'
+import { Home, Map, AlertCircle, BarChart3, Bell, User, Plus, Flag, Activity } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import ProblemCreateForm from '../problem/ProblemCreateForm'
@@ -7,6 +7,7 @@ import ProblemCreateForm from '../problem/ProblemCreateForm'
 const authNavItems = [
   { icon: Home, label: 'Dashboard', path: '/' },
   { icon: AlertCircle, label: 'Problems', path: '/problems' },
+  { icon: Activity, label: 'Feed', path: '/feed' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },
   { icon: Flag, label: 'Reports', path: '/reports' },
@@ -94,7 +95,7 @@ export default function Sidebar() {
       {/* Mobile FAB (Floating Action Button) */}
       <button
         onClick={() => setIsCreateFormOpen(true)}
-        className="md:hidden fixed bottom-20 right-4 w-14 h-14 bg-primary hover:bg-primary-hover rounded-full flex items-center justify-center shadow-xl z-[10000]"
+        className="md:hidden fixed bottom-20 left-4 w-14 h-14 bg-primary hover:bg-primary-hover rounded-full flex items-center justify-center shadow-xl z-[10000]"
       >
         <Plus className="w-6 h-6 text-white" />
       </button>

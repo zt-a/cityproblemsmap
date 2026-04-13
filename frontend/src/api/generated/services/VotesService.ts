@@ -60,6 +60,30 @@ export class VotesService {
         });
     }
     /**
+     * Delete My Vote
+     * Удалить свой голос (отменить голосование).
+     *
+     * На самом деле создаёт новую версию голоса с is_current=False,
+     * чтобы сохранить историю в append-only архитектуре.
+     * @param problemEntityId
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteMyVoteApiV1ProblemsProblemEntityIdVotesMyDelete(
+        problemEntityId: number,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/problems/{problem_entity_id}/votes/my',
+            path: {
+                'problem_entity_id': problemEntityId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Get Vote Stats
      * Агрегированная статистика голосов по проблеме.
      * Берётся из scores проблемы — не считается каждый раз заново.
