@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Изменение статуса вашей проблемы</h1>
+
+<p>Здравствуйте, {{ user_name }}!</p>
+
+<p>Статус вашей проблемы был изменён:</p>
+
+<div class="info-box">
+    <h3>{{ problem_title }}</h3>
+    <p><strong>Старый статус:</strong> {{ old_status }}</p>
+    <p><strong>Новый статус:</strong> {{ new_status }}</p>
+    {% if comment %}
+    <p><strong>Комментарий:</strong> {{ comment }}</p>
+    {% endif %}
+</div>
+
+<a href="{{ problem_url }}" class="button">Посмотреть проблему</a>
+
+<p>С уважением,<br>Команда CityProblemMap</p>
+{% endblock %}

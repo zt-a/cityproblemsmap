@@ -1,0 +1,82 @@
+pnpm dlx openapi-typescript-codegen --input ../backend/openapi.json --output ./src/api/generated
+
+https://leaflet-extras.github.io/leaflet-providers/preview/
+
+
+Leaflet-providers preview
+
+This page shows mini maps for all the layers available in Leaflet-providers.
+Provider names for leaflet-providers.js
+Stadia.AlidadeSmoothDark
+Plain JavaScript:
+
+var Stadia_AlidadeSmoothDark = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.{ext}', {
+	minZoom: 0,
+	maxZoom: 20,
+	attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+	ext: 'png'
+});
+
+
+
+Leaflet-providers preview
+
+This page shows mini maps for all the layers available in Leaflet-providers.
+Provider names for leaflet-providers.js
+Jawg.Dark
+Plain JavaScript:
+
+var Jawg_Dark = L.tileLayer('https://tile.jawg.io/jawg-dark/{z}/{x}/{y}{r}.png?access-token={accessToken}', {
+	attribution: '<a href="https://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+	minZoom: 0,
+	maxZoom: 22,
+	accessToken: '<your accessToken>'
+});
+
+
+
+Leaflet-providers preview
+
+This page shows mini maps for all the layers available in Leaflet-providers.
+Provider names for leaflet-providers.js
+Jawg.Matrix
+Plain JavaScript:
+
+var Jawg_Matrix = L.tileLayer('https://tile.jawg.io/jawg-matrix/{z}/{x}/{y}{r}.png?access-token={accessToken}', {
+	attribution: '<a href="https://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+	minZoom: 0,
+	maxZoom: 22,
+	accessToken: '<your accessToken>'
+});
+
+
+
+
+
+
+Что создано:                                                                                                                                                                                   
+                                                                                                                                                                                                 
+  ✅ 11 проблем в Бишкеке с разными типами:                                                                                                                                                      
+  - Яма на дороге (pothole)                                                                                                                                                                      
+  - Мусор (garbage)                                                                                                                                                                              
+  - Светофор (traffic_light)                                                                                                                                                                     
+  - Освещение (lighting)                                                                                                                                                                         
+  - Затопление (flooding)                                                                                                                                                                        
+  - Дороги (roads)                                                                                                                                                                               
+  - Загрязнение (pollution)                                                                                                                                                                      
+  - Строительство (construction)                                                                                                                                                                 
+  - Инфраструктура (infrastructure)                                                                                                                                                              
+  - Дорожные работы (road_work)                                                                                                                                                                  
+                                                                                                                                                                                                 
+  ✅ Каждая проблема имеет:                                                                                                                                                                      
+  - Реальные координаты в Бишкеке                                                                                                                                                                
+  - Подробное описание                                                                                                                                                                           
+  - Адрес                                                                                                                                                                                        
+  - Голоса (upvotes)                                                                                                                                                                             
+  - Комментарии                                                                                                                                                                                  
+                                                                                                                                                                                                 
+  ✅ Тестовый аккаунт:                                                                                                                                                                           
+  - Email: bishkek@example.com                                                                                                                                                                   
+  - Username: bishkekuser                                                                                                                                                                        
+  - Password: TestPass123!                                                                                                                                                                       
+  - Город: Бишкек             

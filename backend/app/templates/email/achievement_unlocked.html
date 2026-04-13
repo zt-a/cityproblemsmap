@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Новое достижение!</h1>
+
+<p>Здравствуйте, {{ user_name }}!</p>
+
+<p>Поздравляем! Вы получили новое достижение:</p>
+
+<div class="info-box">
+    <h3>{{ achievement_icon }} {{ achievement_name }}</h3>
+    <p>{{ achievement_description }}</p>
+    <p><strong>Награда:</strong> +{{ points }} баллов</p>
+</div>
+
+<p>Ваш текущий уровень: <strong>{{ user_level }}</strong></p>
+<p>Всего баллов: <strong>{{ total_points }}</strong></p>
+
+<a href="{{ profile_url }}" class="button">Посмотреть профиль</a>
+
+<p>Продолжайте в том же духе!</p>
+
+<p>С уважением,<br>Команда CityProblemMap</p>
+{% endblock %}

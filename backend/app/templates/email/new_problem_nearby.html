@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Новая проблема в вашем районе</h1>
+
+<p>Здравствуйте, {{ user_name }}!</p>
+
+<p>В вашем районе <strong>{{ district }}</strong> была добавлена новая проблема:</p>
+
+<div class="info-box">
+    <h3>{{ problem_title }}</h3>
+    <p><strong>Тип:</strong> {{ problem_type }}</p>
+    <p><strong>Описание:</strong> {{ problem_description }}</p>
+    <p><strong>Адрес:</strong> {{ problem_address }}</p>
+</div>
+
+<a href="{{ problem_url }}" class="button">Посмотреть проблему</a>
+
+<p>С уважением,<br>Команда CityProblemMap</p>
+{% endblock %}

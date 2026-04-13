@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Новый комментарий к вашей проблеме</h1>
+
+<p>Здравствуйте, {{ user_name }}!</p>
+
+<p>Пользователь <strong>{{ commenter_name }}</strong> оставил комментарий к вашей проблеме:</p>
+
+<div class="info-box">
+    <h3>{{ problem_title }}</h3>
+    <p><strong>Комментарий:</strong></p>
+    <p>{{ comment_text }}</p>
+</div>
+
+<a href="{{ problem_url }}" class="button">Посмотреть проблему</a>
+
+<p>С уважением,<br>Команда CityProblemMap</p>
+{% endblock %}

@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -lah /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/frontend/*.png)",
+      "Bash(python3 -c ':*)",
+      "Bash(identify -verbose /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/frontend/DesignFrontend.png)",
+      "Bash(convert /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/frontend/DesignFrontend.png -resize 800x600 /tmp/design_small.png)",
+      "Read(//tmp/**)",
+      "Bash(magick /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/frontend/DesignFrontend.png -resize 600x450 -quality 85 /tmp/design_tiny.jpg)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(pnpm run:*)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill:*)",
+      "Bash(lsof -ti:3001)",
+      "Bash(npm install:*)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:8000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"username\":\"zt20061113@gmail.com\",\"password\":\"devZhyrgal006/\"}')",
+      "Bash(curl -s http://localhost:8000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"zt20061113@gmail.com\",\"password\":\"devZhyrgal006/\"}')",
+      "Bash(curl -s http://localhost:8000/api/v1/auth/register -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"test@example.com\",\"username\":\"testuser\",\"password\":\"TestPass123!\",\"city\":\"Алматы\"}')",
+      "Bash(curl -s http://localhost:8000/api/v1/problems/ -X POST -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzc2MDA1MjA5LCJ0eXBlIjoiYWNjZXNzIn0.iXJdZ70MI_r1I-VF4EhQgaHwvCYJzCzqLuRGYaLmr8A' -H 'Content-Type: application/json' -d '{:*)",
+      "Bash(curl -s http://localhost:8000/api/v1/users/me -X PATCH -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzc2MDA1MjA5LCJ0eXBlIjoiYWNjZXNzIn0.iXJdZ70MI_r1I-VF4EhQgaHwvCYJzCzqLuRGYaLmr8A' -H 'Content-Type: application/json' -d '{:*)",
+      "Bash(curl -s http://localhost:8000/api/v1/users/me -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzc2MDA1MjA5LCJ0eXBlIjoiYWNjZXNzIn0.iXJdZ70MI_r1I-VF4EhQgaHwvCYJzCzqLuRGYaLmr8A')",
+      "Bash(curl -s http://localhost:8000/api/v1/users/me -X PATCH -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzc2MDA1MjA5LCJ0eXBlIjoiYWNjZXNzIn0.iXJdZ70MI_r1I-VF4EhQgaHwvCYJzCzqLuRGYaLmr8A' -H 'Content-Type: application/json' -d '{\"city\": \"Бишкек\"}')",
+      "Bash(curl -s http://localhost:8000/api/v1/users/me -X PUT -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzc2MDA1MjA5LCJ0eXBlIjoiYWNjZXNzIn0.iXJdZ70MI_r1I-VF4EhQgaHwvCYJzCzqLuRGYaLmr8A' -H 'Content-Type: application/json' -d '{\"username\": \"testuser\", \"email\": \"test@example.com\", \"city\": \"Бишкек\", \"country\": \"Кыргызстан\"}')",
+      "Bash(curl -s http://localhost:8000/api/v1/auth/register -X POST -H 'Content-Type: application/json' -d '{:*)",
+      "Bash(curl -s 'http://localhost:8000/api/v1/problems/?city=Бишкек&limit=50' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwiZXhwIjoxNzc2MDA1MzIxLCJ0eXBlIjoiYWNjZXNzIn0._0A_j1Olzg_r4kJyz_y3IkMD1m0cO3oe0cQLU1SSTAY')",
+      "Bash(curl -s 'http://localhost:8000/api/v1/problems/?limit=50' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0IiwiZXhwIjoxNzc2MDA1MzIxLCJ0eXBlIjoiYWNjZXNzIn0._0A_j1Olzg_r4kJyz_y3IkMD1m0cO3oe0cQLU1SSTAY')",
+      "Bash(npm run:*)"
+    ]
+  }
+}
