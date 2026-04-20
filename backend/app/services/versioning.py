@@ -57,7 +57,8 @@ def create_new_version(
     column_names = [col.key for col in mapper.columns]
 
     # Скопировать все поля кроме служебных версионирования
-    skip = {"id", "is_current", "created_at", "superseded_at"}
+    # ВАЖНО: created_at НЕ пропускаем - он должен сохраняться из первой версии!
+    skip = {"id", "is_current", "superseded_at"}
     data = {
         col: getattr(current, col)
         for col in column_names

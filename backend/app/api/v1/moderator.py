@@ -83,6 +83,19 @@ def hide_comment(
         flag_reason   = data.reason,
     )
 
+    # Уведомить автора комментария
+    try:
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_comment_hidden(
+            db=db,
+            comment=comment,
+            reason=data.reason,
+            actor_entity_id=current_user.entity_id,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to create notification: {e}")
+
     return {"message": "Комментарий скрыт", "entity_id": updated.entity_id}
 
 
@@ -177,15 +190,15 @@ def get_suspicious_problems(
 
 @router.get("/problems/pending", response_model=ProblemList)
 def get_pending_problems(
-    hours:        int     = Query(24, ge=1, le=168, description="Проблемы за последние N часов"),
+    hours:        int     = Query(168, ge=1, le=720, description="Проблемы за последние N часов"),
     offset:       int     = Query(0,  ge=0),
     limit:        int     = Query(20, ge=1, le=100),
     db:           Session = Depends(get_db),
     current_user: User    = Depends(get_moderator),
 ):
     """
-    Новые проблемы требующие проверки.
-    По умолчанию показывает проблемы за последние 24 часа.
+    Новые проблемы требующие модерации (статус pending).
+    Модератор должен одобрить или отклонить.
     """
     cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
 
@@ -193,7 +206,7 @@ def get_pending_problems(
         db.query(Problem)
         .filter(
             Problem.is_current,
-            Problem.status == ProblemStatus.open,
+            Problem.status == ProblemStatus.pending,  # Только pending проблемы
             Problem.created_at >= cutoff_time,
         )
         .order_by(Problem.created_at.desc())
@@ -237,7 +250,20 @@ def verify_problem(
         entity_id     = entity_id,
         changed_by_id = current_user.entity_id,
         change_reason = f"verified_by_moderator: {note}",
+        status        = ProblemStatus.open,  # Одобренная проблема становится open
     )
+
+    # Уведомить автора о подтверждении
+    try:
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_problem_verified(
+            db=db,
+            problem=problem,
+            actor_entity_id=current_user.entity_id,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to create notification: {e}")
 
     return _to_public(updated)
 

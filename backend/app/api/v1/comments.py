@@ -103,6 +103,34 @@ def create_comment(
     # Инвалидируем кеш — comment_count изменился
     invalidate_problem_cache(problem_entity_id)
 
+    # Создать уведомления
+    try:
+        from app.services.notification_service import NotificationService
+
+        # Если это ответ на комментарий - уведомить автора родительского комментария
+        if data.parent_entity_id:
+            parent = db.query(Comment).filter_by(
+                entity_id=data.parent_entity_id,
+                is_current=True
+            ).first()
+            if parent:
+                NotificationService.notify_comment_replied(
+                    db=db,
+                    parent_comment=parent,
+                    reply_comment=comment,
+                    actor_entity_id=current_user.entity_id,
+                )
+        else:
+            # Если это комментарий к проблеме - уведомить автора проблемы
+            NotificationService.notify_problem_commented(
+                db=db,
+                problem=problem,
+                comment=comment,
+                actor_entity_id=current_user.entity_id,
+            )
+    except Exception as e:
+        logger.warning(f"Failed to create notification: {e}")
+
     # Отправить WebSocket уведомление
     try:
         from app.services.notifications import broadcast_problem_update

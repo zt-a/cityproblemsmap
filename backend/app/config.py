@@ -65,6 +65,30 @@ class Settings(BaseSettings):
     SENTRY_ENVIRONMENT: str = "development"
     SENTRY_TRACES_SAMPLE_RATE: float = 1.0  # 100% в dev, 0.1 в prod
 
+    # Auto-create test accounts
+    CREATE_TEST_ACCOUNTS: bool = False
+
+    # Test account credentials
+    TEST_ADMIN_USERNAME: str = ""
+    TEST_ADMIN_EMAIL: str = ""
+    TEST_ADMIN_PASSWORD: str = ""
+
+    TEST_MODERATOR_USERNAME: str = ""
+    TEST_MODERATOR_EMAIL: str = ""
+    TEST_MODERATOR_PASSWORD: str = ""
+
+    TEST_OFFICIAL_USERNAME: str = ""
+    TEST_OFFICIAL_EMAIL: str = ""
+    TEST_OFFICIAL_PASSWORD: str = ""
+
+    TEST_VOLUNTEER_USERNAME: str = ""
+    TEST_VOLUNTEER_EMAIL: str = ""
+    TEST_VOLUNTEER_PASSWORD: str = ""
+
+    TEST_USER_USERNAME: str = ""
+    TEST_USER_EMAIL: str = ""
+    TEST_USER_PASSWORD: str = ""
+
     # CAPTCHA (Google reCAPTCHA v3)
     RECAPTCHA_SECRET_KEY: str = ""
     RECAPTCHA_SITE_KEY: str = ""

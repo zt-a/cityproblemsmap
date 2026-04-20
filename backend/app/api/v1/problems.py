@@ -91,6 +91,7 @@ def create_problem(
         location         = location,
         problem_type     = data.problem_type,
         nature           = data.nature,
+        status           = ProblemStatus.pending,  # Новые проблемы требуют модерации
         tags             = data.tags,
     )
     db.add(problem)
@@ -134,14 +135,19 @@ def list_problems(
 
     query = db.query(Problem).filter(Problem.is_current)
 
+    # Исключаем pending проблемы - они видны только модераторам
+    if status:
+        query = query.filter(Problem.status == status)
+    else:
+        # По умолчанию показываем только одобренные проблемы (не pending)
+        query = query.filter(Problem.status != ProblemStatus.pending)
+
     if city:
         query = query.filter(
             func.lower(Problem.city) == city.lower().strip()
         )
     if problem_type:
         query = query.filter(Problem.problem_type == problem_type)
-    if status:
-        query = query.filter(Problem.status == status)
 
     total    = query.count()
     problems = (

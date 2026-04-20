@@ -9,9 +9,8 @@ class NotificationBase(BaseModel):
     notification_type: NotificationType
     title: str = Field(..., max_length=255)
     message: str
-    problem_id: Optional[int] = None
-    comment_id: Optional[int] = None
-
+    problem_entity_id: Optional[int] = None  # было problem_id
+    comment_entity_id: Optional[int] = None  # было comment_id
 
 class NotificationCreate(NotificationBase):
     user_id: int
@@ -20,13 +19,12 @@ class NotificationCreate(NotificationBase):
 
 class NotificationPublic(NotificationBase):
     model_config = ConfigDict(from_attributes=True)
-    
     entity_id: int
-    user_id: int
-    actor_id: Optional[int] = None
+    user_entity_id: int
+    actor_entity_id: Optional[int] = None
     is_read: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 

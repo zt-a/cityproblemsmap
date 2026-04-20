@@ -27,6 +27,7 @@ class ProblemNature(str, enum.Enum):
 
 
 class ProblemStatus(str, enum.Enum):
+    pending     = "pending"      # Ожидает модерации
     open        = "open"
     in_progress = "in_progress"
     solved      = "solved"

@@ -284,11 +284,11 @@ export const Notifications = () => {
                     {/* Metadata */}
                     {notification.metadata && (
                       <div className="flex gap-2 text-xs text-[#6B7280]">
-                        {notification.metadata.problem_id && (
-                          <span>Проблема #{notification.metadata.problem_id}</span>
+                        {notification.metadata.problem_entity_id && (
+                          <span>Проблема #{notification.metadata.problem_entity_id}</span>
                         )}
-                        {notification.metadata.comment_id && (
-                          <span>Комментарий #{notification.metadata.comment_id}</span>
+                        {notification.metadata.comment_entity_id && (
+                          <span>Комментарий #{notification.metadata.comment_entity_id}</span>
                         )}
                       </div>
                     )}

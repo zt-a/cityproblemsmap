@@ -18,7 +18,7 @@ class ReportResolve(BaseModel):
 
 class ReportPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     entity_id: int
     version: int
     is_current: bool
@@ -31,6 +31,7 @@ class ReportPublic(BaseModel):
     status: str
     resolved_by_entity_id: Optional[int]
     resolution_note: Optional[str]
+    problem_entity_id: Optional[int] = Field(None, description="ID проблемы (для comment reports)")
 
 
 

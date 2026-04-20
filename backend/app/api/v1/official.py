@@ -207,6 +207,20 @@ def take_problem(
         resolver_type         = ResolverType.official_org,
     )
 
+    # Уведомить автора о взятии в работу
+    try:
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_problem_status_changed(
+            db=db,
+            problem=problem,
+            old_status=problem.status.value,
+            new_status="in_progress",
+            actor_entity_id=current_user.entity_id,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to create notification: {e}")
+
     return _to_public(updated)
 
 
@@ -251,6 +265,20 @@ def resolve_problem(
         resolved_at     = datetime.now(timezone.utc),
         resolution_note = data.resolution_note,
     )
+
+    # Уведомить автора о решении проблемы
+    try:
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_problem_status_changed(
+            db=db,
+            problem=problem,
+            old_status=problem.status.value,
+            new_status="solved",
+            actor_entity_id=current_user.entity_id,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to create notification: {e}")
 
     return _to_public(updated)
 

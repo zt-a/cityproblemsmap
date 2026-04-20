@@ -34,6 +34,16 @@ async def lifespan(app: FastAPI):
     # Синхронный init_db безопасно запускаем в пуле потоков
     await run_in_threadpool(init_db)
 
+    # Создание тестовых аккаунтов
+    from app.utils.create_test_accounts import create_all_test_accounts
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        await run_in_threadpool(create_all_test_accounts, db)
+    finally:
+        db.close()
+
     # Создание папки для медиа тоже синхронная операция — можно напрямую
     Path(settings.MEDIA_LOCAL_DIR).mkdir(exist_ok=True)
 

@@ -141,8 +141,74 @@ def get_moderation_queue(
     """
     Очередь модерации жалоб.
     Доступно только модераторам и админам.
+    Показывает только reports на существующие объекты.
+    Использует SQL JOIN для гарантии валидности.
     """
+    from sqlalchemy import and_, or_
+
+    # Базовый query с JOIN для проверки существования target
     query = db.query(Report).filter_by(is_current=True)
+
+    # Фильтруем по типу target и проверяем существование через JOIN
+    if target_type:
+        if target_type == "problem":
+            query = query.join(
+                Problem,
+                and_(
+                    Report.target_entity_id == Problem.entity_id,
+                    Problem.is_current == True
+                )
+            )
+        elif target_type == "comment":
+            query = query.join(
+                Comment,
+                and_(
+                    Report.target_entity_id == Comment.entity_id,
+                    Comment.is_current == True
+                )
+            )
+        elif target_type == "user":
+            query = query.join(
+                User,
+                and_(
+                    Report.target_entity_id == User.entity_id,
+                    User.is_current == True
+                )
+            )
+        query = query.filter_by(target_type=target_type)
+    else:
+        # Если target_type не указан, проверяем все типы через LEFT JOIN
+        # Используем subquery для проверки существования
+        from sqlalchemy import exists, select
+
+        problem_exists = exists(select(1).where(
+            and_(
+                Problem.entity_id == Report.target_entity_id,
+                Problem.is_current == True,
+                Report.target_type == "problem"
+            )
+        ))
+
+        comment_exists = exists(select(1).where(
+            and_(
+                Comment.entity_id == Report.target_entity_id,
+                Comment.is_current == True,
+                Report.target_type == "comment"
+            )
+        ))
+
+        user_exists = exists(select(1).where(
+            and_(
+                User.entity_id == Report.target_entity_id,
+                User.is_current == True,
+                Report.target_type == "user"
+            )
+        ))
+
+        # Показываем только reports где target существует
+        query = query.filter(
+            or_(problem_exists, comment_exists, user_exists)
+        )
 
     if status_filter:
         query = query.filter_by(status=status_filter)
@@ -150,20 +216,47 @@ def get_moderation_queue(
         # По умолчанию показываем только pending и reviewed
         query = query.filter(Report.status.in_(["pending", "reviewed"]))
 
-    if target_type:
-        query = query.filter_by(target_type=target_type)
-
     total = query.count()
     reports = (
         query
-        .order_by(Report.created_at.asc())  # Старые жалобы первыми
+        .order_by(Report.created_at.asc())
         .offset(offset)
         .limit(limit)
         .all()
     )
 
+    # Добавляем problem_entity_id для comment reports
+    items = []
+    for report in reports:
+        report_dict = {
+            "entity_id": report.entity_id,
+            "version": report.version,
+            "is_current": report.is_current,
+            "created_at": report.created_at,
+            "reporter_entity_id": report.reporter_entity_id,
+            "target_type": report.target_type,
+            "target_entity_id": report.target_entity_id,
+            "reason": report.reason,
+            "description": report.description,
+            "status": report.status,
+            "resolved_by_entity_id": report.resolved_by_entity_id,
+            "resolution_note": report.resolution_note,
+            "problem_entity_id": None,
+        }
+
+        # Для comment reports находим problem_entity_id
+        if report.target_type == "comment":
+            comment = db.query(Comment).filter_by(
+                entity_id=report.target_entity_id,
+                is_current=True
+            ).first()
+            if comment:
+                report_dict["problem_entity_id"] = comment.problem_entity_id
+
+        items.append(ReportPublic(**report_dict))
+
     return ReportList(
-        items=reports,
+        items=items,
         total=total,
         offset=offset,
         limit=limit,

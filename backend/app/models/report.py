@@ -1,5 +1,6 @@
 # app/models/report.py
-from sqlalchemy import Column, Integer, String, Boolean, Text
+from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from app.models.mixins import VersionMixin
 from app.database import Base
 
@@ -7,13 +8,22 @@ from app.database import Base
 class Report(VersionMixin, Base):
     __tablename__ = "reports"
 
+    # Кто пожаловался
     reporter_entity_id = Column(Integer, nullable=False, index=True)
+
+    # На что жалоба
     target_type = Column(String(50), nullable=False)  # problem/comment/user
-    target_entity_id = Column(Integer, nullable=False)
+    target_entity_id = Column(Integer, nullable=False, index=True)
+
+    # Причина и описание
     reason = Column(String(100), nullable=False)  # spam/offensive/inappropriate/other
     description = Column(Text, nullable=True)
+
+    # Статус обработки
     status = Column(String(50), nullable=False, default="pending")  # pending/reviewed/resolved/rejected
-    resolved_by_entity_id = Column(Integer, nullable=True)
+
+    # Кто разрешил жалобу (модератор/админ)
+    resolved_by_entity_id = Column(Integer, nullable=True, index=True)
     resolution_note = Column(Text, nullable=True)
 
     def __repr__(self):

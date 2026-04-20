@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Home, Map, AlertCircle, BarChart3, Bell, User, Plus, Flag, Activity } from 'lucide-react'
+import { Home, Map, AlertCircle, BarChart3, Bell, User, Plus, Flag, Activity, Shield } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { UserRole } from '../../api/generated'
 import ProblemCreateForm from '../problem/ProblemCreateForm'
+import { getSavedLocation } from '../../utils/geolocation'
 
 const authNavItems = [
   { icon: Home, label: 'Dashboard', path: '/' },
@@ -17,7 +19,7 @@ const authNavItems = [
 export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
 
   // Не показываем sidebar если пользователь не авторизован
@@ -25,13 +27,23 @@ export default function Sidebar() {
     return null
   }
 
+  // Check if user has admin access
+  const hasAdminAccess = user?.role === UserRole.ADMIN ||
+                         user?.role === UserRole.MODERATOR ||
+                         user?.role === UserRole.OFFICIAL
+
+  // Add admin link if user has access
+  const navItems = hasAdminAccess
+    ? [...authNavItems, { icon: Shield, label: 'Admin', path: '/admin' }]
+    : authNavItems
+
   return (
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex fixed left-0 top-20 h-[calc(100vh-5rem)] w-sidebar bg-dark-card border-r border-border flex-col items-center py-6 z-40">
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-2 w-full px-3">
-          {authNavItems.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
 
@@ -106,6 +118,10 @@ export default function Sidebar() {
         onClose={() => setIsCreateFormOpen(false)}
         onSuccess={(problemId) => {
           navigate(`/problems/${problemId}`)
+        }}
+        initialLocation={{
+          lat: getSavedLocation().latitude ?? 42.8696,
+          lng: getSavedLocation().longitude ??	74.5932
         }}
       />
     </>

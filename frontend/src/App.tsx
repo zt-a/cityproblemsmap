@@ -16,11 +16,12 @@ import { About } from './pages/About'
 import { HowItWorks } from './pages/HowItWorks'
 import { Contacts } from './pages/Contacts'
 import { MyReports } from './pages/MyReports'
-import { Notifications } from './pages/Notifications'
+import NotificationsPage from './pages/NotificationsPage'
 import { UserSettings } from './pages/UserSettings'
 import { Gamification } from './pages/Gamification'
 import { Subscriptions } from './pages/Subscriptions'
 import { SocialFeed } from './pages/SocialFeed'
+import AdminDashboard from './pages/AdminDashboard'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { useAuth } from './hooks/useAuth'
 import './api/client' // Инициализация API клиента
@@ -69,13 +70,14 @@ function AppContent() {
       <Route path="/users/:userId" element={<MainLayout><UserProfilePage /></MainLayout>} />
       <Route path="/problems" element={<ProtectedRoute><MainLayout><ProblemsPage /></MainLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><MainLayout><AnalyticsPage /></MainLayout></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><MainLayout><NotificationsPage /></MainLayout></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><MainLayout><Profile /></MainLayout></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><MainLayout><MyReports /></MainLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><MainLayout><UserSettings /></MainLayout></ProtectedRoute>} />
       <Route path="/achievements" element={<ProtectedRoute><MainLayout><Gamification /></MainLayout></ProtectedRoute>} />
       <Route path="/subscriptions" element={<ProtectedRoute><MainLayout><Subscriptions /></MainLayout></ProtectedRoute>} />
       <Route path="/feed" element={<ProtectedRoute><MainLayout><SocialFeed /></MainLayout></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute><MainLayout><AdminDashboard /></MainLayout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -5,8 +5,8 @@ interface NotificationMessage {
   type: string;
   message: string;
   notification_id?: number;
-  problem_id?: number;
-  comment_id?: number;
+  problem_entity_id?: number;
+  comment_entity_id?: number;
   user_id?: number;
   created_at?: string;
   [key: string]: any;

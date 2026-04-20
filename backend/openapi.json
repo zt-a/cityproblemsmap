@@ -5469,7 +5469,7 @@
           "moderator"
         ],
         "summary": "Get Pending Problems",
-        "description": "Новые проблемы требующие проверки.\nПо умолчанию показывает проблемы за последние 24 часа.",
+        "description": "Новые проблемы требующие модерации (статус pending).\nМодератор должен одобрить или отклонить.",
         "operationId": "get_pending_problems_api_v1_moderator_problems_pending_get",
         "security": [
           {
@@ -5483,10 +5483,10 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 168,
+              "maximum": 720,
               "minimum": 1,
               "description": "Проблемы за последние N часов",
-              "default": 24,
+              "default": 168,
               "title": "Hours"
             },
             "description": "Проблемы за последние N часов"
@@ -6963,7 +6963,7 @@
           "reports"
         ],
         "summary": "Get Moderation Queue",
-        "description": "Очередь модерации жалоб.\nДоступно только модераторам и админам.",
+        "description": "Очередь модерации жалоб.\nДоступно только модераторам и админам.\nПоказывает только reports на существующие объекты.\nИспользует SQL JOIN для гарантии валидности.",
         "operationId": "get_moderation_queue_api_v1_reports_moderation_queue_get",
         "security": [
           {
@@ -9454,7 +9454,7 @@
             "type": "string",
             "title": "Message"
           },
-          "problem_id": {
+          "problem_entity_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -9463,9 +9463,9 @@
                 "type": "null"
               }
             ],
-            "title": "Problem Id"
+            "title": "Problem Entity Id"
           },
-          "comment_id": {
+          "comment_entity_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -9474,17 +9474,17 @@
                 "type": "null"
               }
             ],
-            "title": "Comment Id"
+            "title": "Comment Entity Id"
           },
           "entity_id": {
             "type": "integer",
             "title": "Entity Id"
           },
-          "user_id": {
+          "user_entity_id": {
             "type": "integer",
-            "title": "User Id"
+            "title": "User Entity Id"
           },
-          "actor_id": {
+          "actor_entity_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -9493,7 +9493,7 @@
                 "type": "null"
               }
             ],
-            "title": "Actor Id"
+            "title": "Actor Entity Id"
           },
           "is_read": {
             "type": "boolean",
@@ -9505,8 +9505,15 @@
             "title": "Created At"
           },
           "updated_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Updated At"
           }
         },
@@ -9516,10 +9523,9 @@
           "title",
           "message",
           "entity_id",
-          "user_id",
+          "user_entity_id",
           "is_read",
-          "created_at",
-          "updated_at"
+          "created_at"
         ],
         "title": "NotificationPublic"
       },
@@ -10127,6 +10133,7 @@
       "ProblemStatus": {
         "type": "string",
         "enum": [
+          "pending",
           "open",
           "in_progress",
           "solved",
@@ -10498,6 +10505,18 @@
               }
             ],
             "title": "Resolution Note"
+          },
+          "problem_entity_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem Entity Id",
+            "description": "ID проблемы (для comment reports)"
           }
         },
         "type": "object",

@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { Share2, Flag, MapPin, Eye, Calendar, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, Play, History, MessageSquare, ThumbsUp, Clock, AlertTriangle, TrendingUp, Users as UsersIcon, ArrowLeft, ExternalLink, Navigation, Edit } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Share2, Flag, MapPin, Eye, Calendar, Loader2, CheckCircle, XCircle, ChevronLeft, ChevronRight, Play, History, MessageSquare, ThumbsUp, Clock, AlertTriangle, TrendingUp, Users as UsersIcon, ArrowLeft, ExternalLink, Navigation, Edit, Filter } from 'lucide-react'
 import { formatDistanceToNow, differenceInDays } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { ReportModal } from '../ReportModal'
 import { UserName } from '../UserName'
@@ -31,6 +31,7 @@ interface ProblemDetailProps {
 
 export default function ProblemDetail({ problemId }: ProblemDetailProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportTarget, setReportTarget] = useState<{
     type: 'problem' | 'comment'
@@ -42,6 +43,7 @@ export default function ProblemDetail({ problemId }: ProblemDetailProps) {
   const [replyTo, setReplyTo] = useState<number | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [isEditFormOpen, setIsEditFormOpen] = useState(false)
+  const [showOnlyOfficialComments, setShowOnlyOfficialComments] = useState(false)
 
   const handleOpenReportModal = (type: 'problem' | 'comment', id: number, title: string) => {
     setReportTarget({ type, id, title })
@@ -67,6 +69,38 @@ export default function ProblemDetail({ problemId }: ProblemDetailProps) {
   const voteMutation = useVote(problemId)
   const deleteVoteMutation = useDeleteVote(problemId)
   const createCommentMutation = useCreateComment(problemId)
+
+  // Scroll to comment if hash is present (e.g., #comment-123)
+  useEffect(() => {
+    if (!location.hash || !comments?.length) return
+
+    const commentId = location.hash.replace('#comment-', '')
+
+    let rafId: number
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const scroll = () => {
+      const element = document.getElementById(`comment-${commentId}`)
+      if (!element) return
+
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      element.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'ring-offset-dark-bg')
+      
+      timeoutId = setTimeout(() => {
+        element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'ring-offset-dark-bg')
+      }, 2000)
+    }
+
+    // Ждём следующий paint цикл
+    rafId = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(scroll) // двойной rAF — гарантирует что DOM обновился
+    })
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearTimeout(timeoutId)
+    }
+  }, [location.hash, comments])
 
   const handleVoteTrue = () => {
     if (!isAuthenticated) {
@@ -196,6 +230,7 @@ export default function ProblemDetail({ problemId }: ProblemDetailProps) {
 
   const statusColors = {
     open: 'badge-pending',
+    pending: 'badge-pending',
     in_progress: 'badge-in-progress',
     solved: 'badge-resolved',
     rejected: 'badge-rejected',
@@ -204,6 +239,7 @@ export default function ProblemDetail({ problemId }: ProblemDetailProps) {
 
   const statusLabels = {
     open: 'Открыта',
+    pending: 'В ожидании',
     in_progress: 'В работе',
     solved: 'Решена',
     rejected: 'Отклонена',
@@ -339,7 +375,7 @@ export default function ProblemDetail({ problemId }: ProblemDetailProps) {
                 <div className="bg-warning/10 border border-warning/30 rounded-lg p-2 lg:p-3">
                   <div className="flex items-center gap-1 lg:gap-2 mb-1">
                     <UsersIcon className="w-3 lg:w-4 h-3 lg:h-4 text-warning" />
-                    <span className="text-xs text-text-muted">Граждан</span>
+                    <span className="text-xs text-text-muted">Комментарии</span>
                   </div>
                   <p className="text-base lg:text-lg font-bold text-warning">
                     {problem.vote_count + problem.comment_count}
@@ -814,9 +850,22 @@ export default function ProblemDetail({ problemId }: ProblemDetailProps) {
 
           {/* Comments Section */}
           <div className="p-6 pb-20 lg:pb-6">
-            <h3 className="text-lg font-semibold text-text-primary mb-4">
-              Комментарии ({comments?.length || 0})
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-text-primary">
+                Комментарии ({comments?.length || 0})
+              </h3>
+              <button
+                onClick={() => setShowOnlyOfficialComments(!showOnlyOfficialComments)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  showOnlyOfficialComments
+                    ? 'bg-primary text-white'
+                    : 'bg-dark-card text-text-secondary hover:bg-dark-hover'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                Только официальные
+              </button>
+            </div>
 
             {/* Comment Input */}
             {isAuthenticated ? (
@@ -882,25 +931,29 @@ export default function ProblemDetail({ problemId }: ProblemDetailProps) {
               <div className="space-y-4">
                 {comments
                   .filter((c) => !c.parent_entity_id) // Top-level comments only
+                  .filter((c) => !showOnlyOfficialComments || c.comment_type === 'official_response')
                   .map((comment) => (
-                    <CommentItem
-                      key={comment.entity_id}
-                      comment={comment}
-                      onReply={handleReply}
-                      onReport={(commentId, authorId) =>
-                        handleOpenReportModal(
-                          'comment',
-                          commentId,
-                          `Комментарий от ID: ${authorId}`
-                        )
-                      }
-                      isAuthenticated={isAuthenticated}
-                    />
+                    <div key={comment.entity_id} id={`comment-${comment.entity_id}`}>
+                      <CommentItem
+                        comment={comment}
+                        onReply={handleReply}
+                        onReport={(commentId, authorId) =>
+                          handleOpenReportModal(
+                            'comment',
+                            commentId,
+                            `Комментарий от ID: ${authorId}`
+                          )
+                        }
+                        isAuthenticated={isAuthenticated}
+                      />
+                    </div>
                   ))}
               </div>
             ) : (
               <p className="text-center text-text-muted py-8">
-                Комментариев пока нет. Будьте первым!
+                {showOnlyOfficialComments
+                  ? 'Официальных комментариев пока нет'
+                  : 'Комментариев пока нет. Будьте первым!'}
               </p>
             )}
           </div>

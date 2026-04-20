@@ -43,7 +43,14 @@
       "Bash(python -c \"from app.main import app; import json; print\\(json.dumps\\(app.openapi\\(\\), indent=2\\)\\)\")",
       "Bash(docker compose:*)",
       "Bash(git commit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(python -c \"from app.config import settings; print\\('CREATE_TEST_ACCOUNTS:', settings.CREATE_TEST_ACCOUNTS\\); print\\('TEST_ADMIN_EMAIL:', settings.TEST_ADMIN_EMAIL\\)\")",
+      "Bash(python:*)",
+      "Bash(python3 -m py_compile /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/backend/app/utils/create_test_accounts.py)",
+      "Bash(python3 -m py_compile /mnt/hdd/Projects/Platforms/CityDigitalTwin/CityProblemMap/backend/app/main.py)",
+      "Bash(grep -E \"\\\\.\\(py\\)$\")",
+      "Bash(grep -n \"class.*Panel\\\\|class.*Stats\" app/schemas/*.py)",
+      "Bash(docker-compose exec:*)"
     ]
   }
 }

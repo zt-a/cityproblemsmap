@@ -323,6 +323,20 @@ def reject_problem(
         status          = ProblemStatus.rejected,
         resolution_note = data.reason,
     )
+
+    # Уведомить автора об отклонении
+    try:
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_problem_rejected(
+            db=db,
+            problem=problem,
+            reason=data.reason,
+            actor_entity_id=current_user.entity_id,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to create notification: {e}")
+
     return _to_public(updated)
 
 
