@@ -13,7 +13,6 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
 
-  // Actions
   login: (credentials: UserLogin) => Promise<void>;
   register: (data: UserRegister) => Promise<void>;
   logout: () => Promise<void>;
@@ -80,6 +79,7 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: async () => {
         const token = getStoredToken();
         if (!token) {
+          clearTokens();
           set({ isAuthenticated: false, user: null });
           return;
         }
@@ -88,10 +88,14 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await UsersService.getMeApiV1UsersMeGet();
           set({ user, isAuthenticated: true, isLoading: false });
-        } catch (error) {
-          // Don't clear tokens on error - might be temporary network issue
-          console.error('Auth check failed:', error);
-          set({ isLoading: false });
+        } catch (error: any) {
+          if (error?.status === 401) {
+            clearTokens();
+            set({ user: null, isAuthenticated: false, isLoading: false });
+          } else {
+            console.error('Auth check failed:', error);
+            set({ isLoading: false });
+          }
         }
       },
 
@@ -101,7 +105,6 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

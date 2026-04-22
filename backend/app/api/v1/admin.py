@@ -13,7 +13,7 @@ from app.schemas.admin import (
     UserAdminView, UserList, ChangeRoleRequest,
     SuspendRequest, SystemStats, RejectProblemRequest,
 )
-from app.schemas.problem import ProblemPublic, ProblemList
+from app.schemas.problem import ProblemPublic, ProblemList, ProblemStatusUpdate
 from app.services.versioning import create_new_version
 from app.api.deps import get_moderator, get_admin
 from app.api.v1.problems import _to_public
@@ -425,3 +425,103 @@ def get_system_stats(
         total_media       = total_media,
         cities_covered    = cities_covered,
     )
+
+
+# ══════════════════════════════════════════════════════════
+# УПРАВЛЕНИЕ СТАТУСАМИ ПРОБЛЕМ (ADMIN)
+# ══════════════════════════════════════════════════════════
+
+@router.patch("/problems/{entity_id}/status", response_model=ProblemPublic)
+def update_problem_status_admin(
+    entity_id:    int,
+    data:         ProblemStatusUpdate,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(get_admin),
+):
+    """
+    Изменить статус проблемы на любой.
+    Только admin.
+
+    Используется для ручного управления статусами:
+    - pending -> open (одобрение)
+    - open -> in_progress
+    - in_progress -> solved
+    - solved -> open (переоткрытие)
+    - любой -> archived
+    """
+    problem = (
+        db.query(Problem)
+        .filter_by(entity_id=entity_id, is_current=True)
+        .first()
+    )
+    if not problem:
+        raise HTTPException(status_code=404, detail="Проблема не найдена")
+
+    if problem.status == data.status:
+        raise HTTPException(
+            status_code = 400,
+            detail      = f"Проблема уже имеет статус {data.status.value}",
+        )
+
+    change_reason = f"admin_status_change: {problem.status.value} -> {data.status.value}"
+
+    updated = create_new_version(
+        db              = db,
+        model_class     = Problem,
+        entity_id       = entity_id,
+        changed_by_id   = current_user.entity_id,
+        change_reason   = change_reason,
+        status         = data.status,
+        resolution_note = data.resolution_note,
+    )
+
+    return _to_public(updated)
+
+
+@router.patch("/problems/{entity_id}/approve", response_model=ProblemPublic)
+def approve_problem(
+    entity_id:    int,
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(get_admin),
+):
+    """
+    Одобрить проблему — перевести из pending в open.
+    Только admin.
+
+    Используется для модерации входящих проблем.
+    """
+    problem = (
+        db.query(Problem)
+        .filter_by(entity_id=entity_id, is_current=True)
+        .first()
+    )
+    if not problem:
+        raise HTTPException(status_code=404, detail="Проблема не найдена")
+
+    if problem.status != ProblemStatus.pending:
+        raise HTTPException(
+            status_code = 400,
+            detail      = f"Можно одобрить только pending проблемы, текущий: {problem.status.value}",
+        )
+
+    updated = create_new_version(
+        db              = db,
+        model_class     = Problem,
+        entity_id       = entity_id,
+        changed_by_id   = current_user.entity_id,
+        change_reason   = "approved_by_admin",
+        status         = ProblemStatus.open,
+    )
+
+    try:
+        from app.services.notification_service import NotificationService
+        NotificationService.notify_problem_approved(
+            db=db,
+            problem=problem,
+            actor_entity_id=current_user.entity_id,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Failed to create notification: {e}")
+
+    return _to_public(updated)

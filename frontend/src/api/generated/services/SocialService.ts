@@ -92,6 +92,27 @@ export class SocialService {
         });
     }
     /**
+     * Get Follow Status
+     * Проверить статус подписки на пользователя
+     * @param userId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getFollowStatusApiV1SocialFollowUserIdStatusGet(
+        userId: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/social/follow/{user_id}/status',
+            path: {
+                'user_id': userId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Get Activity Feed
      * Получить ленту активности подписок
      * @param limit

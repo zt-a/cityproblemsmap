@@ -7,6 +7,7 @@ import type { ProblemList } from '../models/ProblemList';
 import type { ProblemPublic } from '../models/ProblemPublic';
 import type { ProblemStatus } from '../models/ProblemStatus';
 import type { ProblemStatusUpdate } from '../models/ProblemStatusUpdate';
+import type { ProblemUpdate } from '../models/ProblemUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -90,6 +91,33 @@ export class ProblemsService {
             path: {
                 'entity_id': entityId,
             },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Update Problem
+     * Обновить проблему (только автор).
+     * Можно изменить: title, description, address, location, problem_type, tags.
+     * Создаёт новую версию — история изменений сохраняется.
+     * @param entityId
+     * @param requestBody
+     * @returns ProblemPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateProblemApiV1ProblemsEntityIdPatch(
+        entityId: number,
+        requestBody: ProblemUpdate,
+    ): CancelablePromise<ProblemPublic> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/problems/{entity_id}',
+            path: {
+                'entity_id': entityId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

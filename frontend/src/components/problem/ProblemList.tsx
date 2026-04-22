@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { Search, Filter, SlidersHorizontal, X, Loader2 } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Search, SlidersHorizontal, X, Loader2, ChevronDown } from 'lucide-react'
 import ProblemCard from './ProblemCard'
-import { useProblems, type ProblemFilters } from '../../hooks/useProblems'
+import { useAllProblems, useProblem } from '../../hooks/useProblems'
 import type { ProblemStatus } from '../../api/generated/models/ProblemStatus'
 import type { ProblemPublic } from '../../api/generated/models/ProblemPublic'
+import type { IntersectionObserverEntry } from 'react-dom'
 
 interface ProblemListProps {
   selectedProblemId: number | null
@@ -11,55 +12,144 @@ interface ProblemListProps {
   onClose: () => void
 }
 
+const STATUS_OPTIONS: { label: string; value: ProblemStatus | undefined }[] = [
+  { label: 'Все', value: undefined },
+  { label: 'Новые', value: 'pending' as ProblemStatus },
+  { label: 'В работе', value: 'in_progress' as ProblemStatus },
+  { label: 'Решённые', value: 'resolved' as ProblemStatus },
+]
+
+const TYPE_OPTIONS = [
+  { label: 'Все типы', value: '' },
+  { label: 'Яма на дороге', value: 'pothole' },
+  { label: 'Мусор', value: 'garbage' },
+  { label: 'Дорожные работы', value: 'road_work' },
+  { label: 'Загрязнение', value: 'pollution' },
+  { label: 'Светофор', value: 'traffic_light' },
+  { label: 'Затопление', value: 'flooding' },
+  { label: 'Освещение', value: 'lighting' },
+  { label: 'Строительство', value: 'construction' },
+  { label: 'Дороги', value: 'roads' },
+  { label: 'Инфраструктура', value: 'infrastructure' },
+  { label: 'Другое', value: 'other' },
+]
+
 export default function ProblemList({ selectedProblemId, onCardClick, onClose }: ProblemListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [statusFilter, setStatusFilter] = useState<ProblemStatus | undefined>(undefined)
-  const [cityFilter, setCityFilter] = useState<string>('')
-  const [typeFilter, setTypeFilter] = useState<string>('')
+  const [cityFilter, setCityFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
 
-  // Build filters
-  const filters: ProblemFilters = {
-    status: statusFilter,
-    city: cityFilter || undefined,
-    problemType: typeFilter || undefined,
-    limit: 50,
-  }
+  const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
+  const listRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  // Load problems from API
-  const { data: problemsData, isLoading, error } = useProblems(filters)
-
-  // Convert API data to component format
+  const { data: problemsData, isLoading, error, hasNextPage, fetchNextPage } = useAllProblems({
+    ...(statusFilter && { status: statusFilter }),
+    ...(cityFilter.trim() && { city: cityFilter.trim() }),
+    ...(typeFilter && { problemType: typeFilter }),
+  })
   const problems: ProblemPublic[] = problemsData?.items || []
 
-  // Filter by search query on client side (since API doesn't support search yet)
-  const filteredProblems = searchQuery
-    ? problems.filter(
+  // Fetch problem if not in list
+  const { data: singleProblem, isLoading: isLoadingSingle } = useProblem(
+    selectedProblemId && !problems.find(p => p.entity_id === selectedProblemId)
+      ? selectedProblemId
+      : null
+  )
+
+  // Add single problem to list temporarily for display
+  const displayProblems = problems.concat(
+    singleProblem && selectedProblemId && !problems.find(p => p.entity_id === singleProblem.entity_id)
+      ? [singleProblem]
+      : []
+  )
+
+  // Client-side search on top of server-side filters
+  const filteredProblems = searchQuery.trim()
+    ? displayProblems.filter(
         (p) =>
           p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchQuery.toLowerCase())
+          p.description.toLowerCase().includes(searchQuery.toLowerCase()),
       )
-    : problems
+    : displayProblems
+
+  // Scroll to active card whenever selectedProblemId changes
+  useEffect(() => {
+    if (selectedProblemId == null) return
+    
+    // Wait for single problem to load if it's being fetched
+    const checkAndScroll = () => {
+      const el = cardRefs.current[selectedProblemId]
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        return true
+      }
+      return false
+    }
+
+    // If problem not in list yet and we're loading it, wait for it
+    if (isLoadingSingle) {
+      const timeout = setTimeout(checkAndScroll, 100)
+      return () => clearTimeout(timeout)
+    }
+
+    checkAndScroll()
+  }, [selectedProblemId, isLoadingSingle])
+
+  // Infinite scroll observer
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [target] = entries
+    if (target.isIntersecting && hasNextPage && !isLoading) {
+      fetchNextPage()
+    }
+  }, [hasNextPage, fetchNextPage, isLoading])
+
+  useEffect(() => {
+    const element = loadMoreRef.current
+    if (!element) return
+
+    const observer = new IntersectionObserver(handleObserver, {
+      threshold: 0.1,
+    })
+
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [handleObserver])
+
+  const hasActiveFilters = !!statusFilter || !!cityFilter || !!typeFilter
+
+  const clearFilters = () => {
+    setStatusFilter(undefined)
+    setCityFilter('')
+    setTypeFilter('')
+  }
 
   return (
     <div className="h-full flex flex-col bg-dark-bg md:overflow-hidden">
-      {/* Header with filters */}
-      <div className="p-4 border-b border-border space-y-3">
-        {/* Title */}
+      {/* Header */}
+      <div className="p-4 border-b border-border space-y-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">Проблемы</h2>
           <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-text-primary">Проблемы</h2>
+            {!isLoading && (
+              <span className="text-xs text-text-muted bg-dark-hover px-2 py-0.5 rounded-full">
+                {filteredProblems.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="btn-ghost p-2"
+              className={`btn-ghost p-2 relative ${showFilters ? 'text-primary' : ''}`}
             >
               <SlidersHorizontal className="w-5 h-5" />
+              {hasActiveFilters && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
+              )}
             </button>
-            <button
-              onClick={onClose}
-              className="btn-ghost p-2"
-              aria-label="Закрыть панель"
-            >
+            <button onClick={onClose} className="btn-ghost p-2" aria-label="Закрыть панель">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -75,103 +165,77 @@ export default function ProblemList({ selectedProblemId, onCardClick, onClose }:
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input w-full pl-10"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Filters (collapsible) */}
+        {/* Filters */}
         {showFilters && (
-          <div className="space-y-3 pt-2">
-            {/* Status Filter */}
+          <div className="space-y-3 pt-1">
+            {/* Status */}
             <div>
               <label className="text-xs text-text-muted mb-2 block">Статус</label>
               <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => setStatusFilter(undefined)}
-                  className={`badge cursor-pointer ${
-                    !statusFilter
-                      ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                      : 'bg-dark-hover text-text-secondary hover:bg-dark-input'
-                  }`}
-                >
-                  Все
-                </button>
-                <button
-                  onClick={() => setStatusFilter('pending' as ProblemStatus)}
-                  className={`badge cursor-pointer ${
-                    statusFilter === 'pending'
-                      ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                      : 'bg-dark-hover text-text-secondary hover:bg-dark-input'
-                  }`}
-                >
-                  Новые
-                </button>
-                <button
-                  onClick={() => setStatusFilter('in_progress' as ProblemStatus)}
-                  className={`badge cursor-pointer ${
-                    statusFilter === 'in_progress'
-                      ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                      : 'bg-dark-hover text-text-secondary hover:bg-dark-input'
-                  }`}
-                >
-                  В работе
-                </button>
-                <button
-                  onClick={() => setStatusFilter('resolved' as ProblemStatus)}
-                  className={`badge cursor-pointer ${
-                    statusFilter === 'resolved'
-                      ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                      : 'bg-dark-hover text-text-secondary hover:bg-dark-input'
-                  }`}
-                >
-                  Решённые
-                </button>
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={String(opt.value)}
+                    onClick={() => setStatusFilter(opt.value)}
+                    className={`badge cursor-pointer transition-colors ${
+                      statusFilter === opt.value
+                        ? 'bg-primary/20 text-primary'
+                        : 'bg-dark-hover text-text-secondary hover:bg-dark-input'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* City Filter */}
+            {/* City */}
             <div>
               <label className="text-xs text-text-muted mb-2 block">Город</label>
               <input
                 type="text"
-                placeholder="Например: Алматы"
+                placeholder="Например: Бишкек"
                 value={cityFilter}
                 onChange={(e) => setCityFilter(e.target.value)}
                 className="input w-full text-sm"
               />
             </div>
 
-            {/* Type Filter */}
+            {/* Type */}
             <div>
               <label className="text-xs text-text-muted mb-2 block">Тип проблемы</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="input w-full text-sm"
-              >
-                <option value="">Все типы</option>
-                <option value="pothole">Яма на дороге</option>
-                <option value="garbage">Мусор</option>
-                <option value="road_work">Дорожные работы</option>
-                <option value="pollution">Загрязнение</option>
-                <option value="traffic_light">Светофор</option>
-                <option value="flooding">Затопление</option>
-                <option value="lighting">Освещение</option>
-                <option value="construction">Строительство</option>
-                <option value="roads">Дороги</option>
-                <option value="infrastructure">Инфраструктура</option>
-                <option value="other">Другое</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="input w-full text-sm appearance-none pr-8"
+                >
+                  {TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+              </div>
             </div>
 
-            {/* Clear Filters */}
-            {(statusFilter || cityFilter || typeFilter) && (
+            {/* Clear filters */}
+            {hasActiveFilters && (
               <button
-                onClick={() => {
-                  setStatusFilter(undefined)
-                  setCityFilter('')
-                  setTypeFilter('')
-                }}
-                className="text-sm text-primary hover:text-primary-hover"
+                onClick={clearFilters}
+                className="text-sm text-primary hover:text-primary-hover flex items-center gap-1"
               >
+                <X className="w-3.5 h-3.5" />
                 Сбросить фильтры
               </button>
             )}
@@ -179,15 +243,15 @@ export default function ProblemList({ selectedProblemId, onCardClick, onClose }:
         )}
       </div>
 
-      {/* Problem list */}
-      <div className="flex-1 p-4 space-y-3 md:overflow-y-auto">
+      {/* List */}
+      <div ref={listRef} className="flex-1 p-4 space-y-3 md:overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
         ) : error ? (
           <div className="text-center py-12">
-            <p className="text-text-secondary mb-2">Ошибка загрузки проблем</p>
+            <p className="text-text-secondary mb-2">Ошибка загрузки</p>
             <p className="text-sm text-text-muted">{(error as any)?.message || 'Попробуйте позже'}</p>
           </div>
         ) : filteredProblems.length === 0 ? (
@@ -196,14 +260,27 @@ export default function ProblemList({ selectedProblemId, onCardClick, onClose }:
             <p className="text-sm text-text-muted mt-1">Попробуйте изменить фильтры</p>
           </div>
         ) : (
-          filteredProblems.map((problem) => (
-            <ProblemCard
-              key={problem.entity_id}
-              problem={problem}
-              isActive={selectedProblemId === problem.entity_id}
-              onCardClick={() => onCardClick(problem.entity_id, problem.latitude, problem.longitude)}
-            />
-          ))
+          <>
+            {filteredProblems.map((problem) => (
+              <div
+                key={problem.entity_id}
+                ref={(el) => {
+                  cardRefs.current[problem.entity_id] = el
+                }}
+              >
+                <ProblemCard
+                  problem={problem}
+                  isActive={selectedProblemId === problem.entity_id}
+                  onCardClick={() => onCardClick(problem.entity_id, problem.latitude, problem.longitude)}
+                />
+              </div>
+            ))}
+            <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+              {isLoading && (
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

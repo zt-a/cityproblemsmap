@@ -6,6 +6,7 @@ import type { ChangeRoleRequest } from '../models/ChangeRoleRequest';
 import type { ProblemList } from '../models/ProblemList';
 import type { ProblemPublic } from '../models/ProblemPublic';
 import type { ProblemStatus } from '../models/ProblemStatus';
+import type { ProblemStatusUpdate } from '../models/ProblemStatusUpdate';
 import type { RejectProblemRequest } from '../models/RejectProblemRequest';
 import type { SuspendRequest } from '../models/SuspendRequest';
 import type { SystemStats } from '../models/SystemStats';
@@ -277,6 +278,63 @@ export class AdminService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/admin/stats',
+        });
+    }
+    /**
+     * Update Problem Status Admin
+     * Изменить статус проблемы на любой.
+     * Только admin.
+     *
+     * Используется для ручного управления статусами:
+     * - pending -> open (одобрение)
+     * - open -> in_progress
+     * - in_progress -> solved
+     * - solved -> open (переоткрытие)
+     * - любой -> archived
+     * @param entityId
+     * @param requestBody
+     * @returns ProblemPublic Successful Response
+     * @throws ApiError
+     */
+    public static updateProblemStatusAdminApiV1AdminProblemsEntityIdStatusPatch(
+        entityId: number,
+        requestBody: ProblemStatusUpdate,
+    ): CancelablePromise<ProblemPublic> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/admin/problems/{entity_id}/status',
+            path: {
+                'entity_id': entityId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Approve Problem
+     * Одобрить проблему — перевести из pending в open.
+     * Только admin.
+     *
+     * Используется для модерации входящих проблем.
+     * @param entityId
+     * @returns ProblemPublic Successful Response
+     * @throws ApiError
+     */
+    public static approveProblemApiV1AdminProblemsEntityIdApprovePatch(
+        entityId: number,
+    ): CancelablePromise<ProblemPublic> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/admin/problems/{entity_id}/approve',
+            path: {
+                'entity_id': entityId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
 }

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Toaster } from 'sonner'
 import MainLayout from './components/layout/MainLayout'
 import HomePage from './pages/HomePage'
@@ -24,46 +24,50 @@ import { SocialFeed } from './pages/SocialFeed'
 import AdminDashboard from './pages/AdminDashboard'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { useAuth } from './hooks/useAuth'
-import './api/client' // Инициализация API клиента
+import './api/client'
 
-// Create a client with better error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors
         if (error?.status >= 400 && error?.status < 500) {
           return false
         }
-        // Retry up to 2 times for other errors
         return failureCount < 2
       },
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
     mutations: {
-      retry: false, // Don't retry mutations by default
+      retry: false,
     },
   },
 })
 
 function AppContent() {
   const { checkAuth } = useAuth()
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    checkAuth()
+    checkAuth().finally(() => setIsReady(true))
   }, [checkAuth])
+
+  if (!isReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0B1220]">
+        <div className="text-[#E5E7EB]">Загрузка...</div>
+      </div>
+    )
+  }
 
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/about" element={<MainLayout><About /></MainLayout>} />
       <Route path="/how-it-works" element={<MainLayout><HowItWorks /></MainLayout>} />
       <Route path="/contacts" element={<MainLayout><Contacts /></MainLayout>} />
 
-      {/* Protected routes */}
       <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
       <Route path="/map" element={<MainLayout><MapPage /></MainLayout>} />
       <Route path="/problems/:id" element={<MainLayout><ProblemDetailPage /></MainLayout>} />

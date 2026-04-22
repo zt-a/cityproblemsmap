@@ -14,6 +14,7 @@ from app.middleware.security import SecurityHeadersMiddleware
 from app.websocket.notifications import websocket_notifications
 from app.websocket.problems import websocket_problem
 import sentry_sdk
+import oko
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse
 
@@ -26,6 +27,16 @@ if settings.SENTRY_DSN:
         profiles_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
         enable_tracing=True,
     )
+
+oko.init(
+    telegram_token=settings.OKO_TELEGRAM_TOKEN,
+    telegram_chat_id=settings.OKO_TELEGRAM_CHAT_ID,
+    dashboard_url=settings.OKO_DASHBOARD_URL,
+    project=settings.OKO_PROJECT_NAME,
+    environment=settings.OKO_PROJECT_ENVIROMENT,
+    silence=settings.OKO_SILENCE,
+    capture_logs=True,
+)
 
 
 
@@ -69,6 +80,10 @@ app = FastAPI(
 
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Подключаем ASGI middleware — одна строка
+app.add_middleware(oko.ASGIMiddleware)
+app.include_router(oko.dashboard_router('/oko'))
 
 # CORS middleware
 app.add_middleware(

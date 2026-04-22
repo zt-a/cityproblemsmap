@@ -9,7 +9,7 @@ import { getSavedLocation } from '../../utils/geolocation'
 const authNavItems = [
   { icon: Home, label: 'Dashboard', path: '/' },
   { icon: AlertCircle, label: 'Problems', path: '/problems' },
-  { icon: Activity, label: 'Feed', path: '/feed' },
+  // { icon: Activity, label: 'Feed', path: '/feed' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },
   { icon: Flag, label: 'Reports', path: '/reports' },

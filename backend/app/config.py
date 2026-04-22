@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     SENTRY_ENVIRONMENT: str = "development"
     SENTRY_TRACES_SAMPLE_RATE: float = 1.0  # 100% в dev, 0.1 в prod
 
+    OKO_TELEGRAM_TOKEN: str = "8642162012:AAHLsMcVsM-MHiPB025jxhENrgb5i2uxcHY",
+    OKO_TELEGRAM_CHAT_ID: str = "7931884852",
+    OKO_DASHBOARD_URL: str = "http://localhost:8000",
+    OKO_PROJECT_NAME: str = "City Problems Map",
+    OKO_PROJECT_ENVIROMENT: str = "production",
+    OKO_SILENCE: int = 300,
+
     # Auto-create test accounts
     CREATE_TEST_ACCOUNTS: bool = False
 

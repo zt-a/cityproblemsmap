@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export enum ProblemStatus {
+    PENDING = 'pending',
     OPEN = 'open',
     IN_PROGRESS = 'in_progress',
     SOLVED = 'solved',

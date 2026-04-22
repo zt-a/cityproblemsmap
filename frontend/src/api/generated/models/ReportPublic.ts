@@ -15,5 +15,9 @@ export type ReportPublic = {
     status: string;
     resolved_by_entity_id: (number | null);
     resolution_note: (string | null);
+    /**
+     * ID проблемы (для comment reports)
+     */
+    problem_entity_id?: (number | null);
 };
 

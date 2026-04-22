@@ -5223,6 +5223,112 @@
         ]
       }
     },
+    "/api/v1/admin/problems/{entity_id}/status": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update Problem Status Admin",
+        "description": "Изменить статус проблемы на любой.\nТолько admin.\n\nИспользуется для ручного управления статусами:\n- pending -> open (одобрение)\n- open -> in_progress\n- in_progress -> solved\n- solved -> open (переоткрытие)\n- любой -> archived",
+        "operationId": "update_problem_status_admin_api_v1_admin_problems__entity_id__status_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProblemStatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/problems/{entity_id}/approve": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Approve Problem",
+        "description": "Одобрить проблему — перевести из pending в open.\nТолько admin.\n\nИспользуется для модерации входящих проблем.",
+        "operationId": "approve_problem_api_v1_admin_problems__entity_id__approve_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemPublic"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/moderator/comments/flagged": {
       "get": {
         "tags": [

@@ -43,7 +43,7 @@ export default function AnalyticsPage() {
   }
 
   // Calculate trends from trend data (compare oldest vs newest)
-  const calculateTrend = (trendData: any[], field: 'new_problems' | 'resolved_problems' = 'new_problems') => {
+  const calculateTrend = (trendData: any[], field: 'new_problems' | 'solved' = 'new_problems') => {
     if (!trendData || trendData.length < 2) return null
     const oldValue = trendData[0]?.[field] || 0
     const newValue = trendData[trendData.length - 1]?.[field] || 0
@@ -58,31 +58,31 @@ export default function AnalyticsPage() {
       change: calculateTrend(trend || [], 'new_problems'),
       icon: <AlertCircle className="w-6 h-6" />,
       color: 'text-primary',
-      link: '/problems', // All problems
+      link: '/problems',
     },
     {
       title: 'Новые',
-      value: overview.status_breakdown?.pending || 0,
+      value: overview.status_distribution?.open || 0,
       change: calculateTrend(trend || [], 'new_problems'),
       icon: <Clock className="w-6 h-6" />,
       color: 'text-danger',
-      link: '/problems?status=pending',
+      link: '/problems?status=open',
     },
     {
       title: 'В работе',
-      value: overview.status_breakdown?.in_progress || 0,
-      change: null, // No trend data for in_progress
+      value: overview.status_distribution?.in_progress || 0,
+      change: null,
       icon: <BarChart3 className="w-6 h-6" />,
       color: 'text-warning',
       link: '/problems?status=in_progress',
     },
     {
       title: 'Решено',
-      value: overview.status_breakdown?.resolved || 0,
-      change: calculateTrend(trend || [], 'resolved_problems'),
+      value: overview.status_distribution?.solved || 0,
+      change: calculateTrend(trend || [], 'solved'),
       icon: <CheckCircle className="w-6 h-6" />,
       color: 'text-success',
-      link: '/problems?status=resolved',
+      link: '/problems?status=solved',
     },
   ]
 
@@ -155,19 +155,19 @@ export default function AnalyticsPage() {
               Типы проблем
             </h3>
             <div className="space-y-4">
-              {overview.type_breakdown && Object.entries(overview.type_breakdown)
-                .sort(([, a], [, b]) => b - a)
+              {overview.by_type && overview.by_type
+                .sort((a, b) => b.count - a.count)
                 .slice(0, 8)
-                .map(([type, count]) => {
-                  const percentage = (count / overview.total_problems) * 100
+                .map((item) => {
+                  const percentage = overview.total_problems > 0 ? (item.count / overview.total_problems) * 100 : 0
                   return (
-                    <div key={type}>
+                    <div key={item.problem_type}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-text-secondary">
-                          {typeLabels[type] || type}
+                          {typeLabels[item.problem_type] || item.problem_type}
                         </span>
                         <span className="text-sm font-semibold text-text-primary">
-                          {count} ({percentage.toFixed(1)}%)
+                          {item.count} ({percentage.toFixed(1)}%)
                         </span>
                       </div>
                       <div className="h-2 bg-dark-hover rounded-full overflow-hidden">
@@ -196,14 +196,14 @@ export default function AnalyticsPage() {
                   <div>
                     <p className="text-sm text-text-secondary">Новые</p>
                     <p className="text-2xl font-bold text-text-primary">
-                      {overview.status_breakdown?.pending || 0}
+                      {overview.status_distribution?.open || 0}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-text-muted">
                     {overview.total_problems > 0
-                      ? (((overview.status_breakdown?.pending || 0) / overview.total_problems) * 100).toFixed(1)
+                      ? (((overview.status_distribution?.open || 0) / overview.total_problems) * 100).toFixed(1)
                       : '0'}%
                   </p>
                 </div>
@@ -217,14 +217,14 @@ export default function AnalyticsPage() {
                   <div>
                     <p className="text-sm text-text-secondary">В работе</p>
                     <p className="text-2xl font-bold text-text-primary">
-                      {overview.status_breakdown?.in_progress || 0}
+                      {overview.status_distribution?.in_progress || 0}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-text-muted">
                     {overview.total_problems > 0
-                      ? (((overview.status_breakdown?.in_progress || 0) / overview.total_problems) * 100).toFixed(1)
+                      ? (((overview.status_distribution?.in_progress || 0) / overview.total_problems) * 100).toFixed(1)
                       : '0'}%
                   </p>
                 </div>
@@ -238,14 +238,14 @@ export default function AnalyticsPage() {
                   <div>
                     <p className="text-sm text-text-secondary">Решено</p>
                     <p className="text-2xl font-bold text-text-primary">
-                      {overview.status_breakdown?.resolved || 0}
+                      {overview.status_distribution?.solved || 0}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-text-muted">
                     {overview.total_problems > 0
-                      ? (((overview.status_breakdown?.resolved || 0) / overview.total_problems) * 100).toFixed(1)
+                      ? (((overview.status_distribution?.solved || 0) / overview.total_problems) * 100).toFixed(1)
                       : '0'}%
                   </p>
                 </div>

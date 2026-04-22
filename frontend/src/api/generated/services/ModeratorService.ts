@@ -116,8 +116,8 @@ export class ModeratorService {
     }
     /**
      * Get Pending Problems
-     * Новые проблемы требующие проверки.
-     * По умолчанию показывает проблемы за последние 24 часа.
+     * Новые проблемы требующие модерации (статус pending).
+     * Модератор должен одобрить или отклонить.
      * @param hours Проблемы за последние N часов
      * @param offset
      * @param limit
@@ -125,7 +125,7 @@ export class ModeratorService {
      * @throws ApiError
      */
     public static getPendingProblemsApiV1ModeratorProblemsPendingGet(
-        hours: number = 24,
+        hours: number = 168,
         offset?: number,
         limit: number = 20,
     ): CancelablePromise<ProblemList> {

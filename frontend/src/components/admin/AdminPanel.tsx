@@ -117,6 +117,31 @@ export default function AdminPanel() {
     onError: () => toast.error('Failed to restore problem'),
   })
 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ entityId, status, resolutionNote }: { entityId: number; status: ProblemStatus; resolutionNote?: string }) =>
+      AdminService.updateProblemStatusAdminApiV1AdminProblemsEntityIdStatusPatch(entityId, {
+        status,
+        resolution_note: resolutionNote,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-problems'] })
+      queryClient.invalidateQueries({ queryKey: ['system-stats'] })
+      toast.success('Problem status updated successfully')
+    },
+    onError: (error: any) => toast.error(error?.body?.detail || 'Failed to update problem status'),
+  })
+
+  const approveProblemByAdminMutation = useMutation({
+    mutationFn: (entityId: number) =>
+      AdminService.approveProblemApiV1AdminProblemsEntityIdApprovePatch(entityId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-problems'] })
+      queryClient.invalidateQueries({ queryKey: ['system-stats'] })
+      toast.success('Problem approved by admin successfully')
+    },
+    onError: (error: any) => toast.error(error?.body?.detail || 'Failed to approve problem'),
+  })
+
   const resolveReportMutation = useMutation({
     mutationFn: ({ entityId, status, notes }: { entityId: number; status: 'resolved' | 'rejected'; notes?: string }) =>
       ReportsService.resolveReportApiV1ReportsModerationEntityIdResolvePatch(entityId, {
@@ -347,11 +372,34 @@ export default function AdminPanel() {
 
                     <p className="text-sm text-text-muted mb-3 line-clamp-2">{problem.description}</p>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={problem.status}
+                        onChange={e => {
+                          const newStatus = e.target.value as ProblemStatus
+                          const note = prompt('Resolution note (optional):')
+                          if (newStatus !== problem.status) {
+                            updateStatusMutation.mutate({
+                              entityId: problem.entity_id,
+                              status: newStatus,
+                              resolutionNote: note || undefined,
+                            })
+                          }
+                        }}
+                        disabled={updateStatusMutation.isPending}
+                        className="px-3 py-1.5 text-sm bg-dark-input text-text-primary border border-border rounded disabled:opacity-50 [&>option]:bg-dark-card"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="solved">Solved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="archived">Archived</option>
+                      </select>
                       {problem.status === 'pending' && (
                         <button
-                          onClick={() => approveProblemMutation.mutate(problem.entity_id)}
-                          disabled={approveProblemMutation.isPending}
+                          onClick={() => approveProblemByAdminMutation.mutate(problem.entity_id)}
+                          disabled={approveProblemByAdminMutation.isPending}
                           className="px-3 py-1.5 text-sm bg-green-500 hover:bg-green-600 text-white rounded disabled:opacity-50"
                         >
                           <CheckCircle className="w-4 h-4 inline mr-1" />

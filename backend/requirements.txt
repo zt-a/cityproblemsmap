@@ -43,3 +43,6 @@ shapely==2.0.6
 cloudinary==1.40.0
 python-multipart==0.0.12   # уже есть — для загрузки файлов
 Pillow==10.4.0             # работа с изображениями + EXIF
+
+
+oko-py==0.1.4

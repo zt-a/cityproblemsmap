@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import ProblemList from '../components/problem/ProblemList'
 import MapView from '../components/map/MapView'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useProblems } from '../hooks/useProblems'
+import { useAllProblems } from '../hooks/useProblems'
 
 export default function MapPage() {
   const [searchParams] = useSearchParams()
@@ -23,8 +23,8 @@ export default function MapPage() {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(initialCenter)
   const [mapZoom, setMapZoom] = useState<number>(initialZoom)
 
-  // Load problems from API
-  const { data: problemsData } = useProblems({ limit: 100 })
+  // Load all problems with infinite scroll
+  const { data: problemsData } = useAllProblems()
   const problems = problemsData?.items || []
 
   // When clicking on a problem card, center map on that marker

@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.claude
+CLAUDE.md
+note
+.note
+oko.db
+*db

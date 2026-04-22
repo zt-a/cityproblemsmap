@@ -1,21 +1,12 @@
-import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, ThumbsUp, MessageCircle, Eye, Clock, Search, Filter, X } from 'lucide-react'
-import { useProblems } from '../hooks/useProblems'
+import { useInfiniteProblems } from '../hooks/useProblems'
+import { useProblemMedia } from '../hooks/useMedia'
+import type { IntersectionObserverEntry } from 'react-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { ProblemPublic } from '../api/generated/models/ProblemPublic'
-import 'leaflet/dist/leaflet.css'
-import L from 'leaflet'
-
-// Fix Leaflet default marker icon
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-})
 
 interface ProblemCardProps {
   problem: ProblemPublic
@@ -24,41 +15,27 @@ interface ProblemCardProps {
 function ProblemCard({ problem }: ProblemCardProps) {
   const navigate = useNavigate()
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
-  const [showMap, setShowMap] = useState(false)
 
-  // Validate coordinates
-  const hasValidCoordinates =
-    problem.latitude !== undefined &&
-    problem.latitude !== null &&
-    problem.longitude !== undefined &&
-    problem.longitude !== null &&
-    !isNaN(problem.latitude) &&
-    !isNaN(problem.longitude)
+  // Загружаем медиа для этой проблемы
+  const { data: media, isLoading: mediaLoading } = useProblemMedia(problem.entity_id)
 
-  // Create carousel items: media -> map -> media -> map...
-  const mediaItems = problem.media || []
-  const totalItems = mediaItems.length > 0 ? mediaItems.length * 2 : 1 // Each media + map
+  // Filter only photos
+  const photos = media?.filter(m => m.media_type === 'photo') || []
+  
+  // Only media carousel (no map)
+  const totalItems = photos.length
 
   useEffect(() => {
-    if (totalItems === 1) {
-      // Only map, no carousel
-      setShowMap(true)
-      return
-    }
+    if (totalItems <= 1) return
 
     const interval = setInterval(() => {
-      setCurrentMediaIndex((prev) => {
-        const next = (prev + 1) % totalItems
-        // Toggle between media and map
-        setShowMap(next % 2 === 1)
-        return next
-      })
-    }, 2000) // Change every 2 seconds
+      setCurrentMediaIndex((prev) => (prev + 1) % totalItems)
+    }, 2000)
 
     return () => clearInterval(interval)
   }, [totalItems])
 
-  const currentMedia = mediaItems[Math.floor(currentMediaIndex / 2)]
+  const currentMedia = photos[currentMediaIndex]
 
   return (
     <div
@@ -67,39 +44,15 @@ function ProblemCard({ problem }: ProblemCardProps) {
     >
       {/* Thumbnail / Media Carousel */}
       <div className="relative aspect-video bg-dark-hover overflow-hidden">
-        {showMap || !currentMedia ? (
-          // Show mini map
-          hasValidCoordinates ? (
-            <div className="w-full h-full">
-              <MapContainer
-                center={[problem.latitude, problem.longitude]}
-                zoom={14}
-                className="w-full h-full"
-                zoomControl={false}
-                attributionControl={false}
-                dragging={false}
-                scrollWheelZoom={false}
-                doubleClickZoom={false}
-                touchZoom={false}
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution=""
-                />
-                <Marker position={[problem.latitude, problem.longitude]} />
-              </MapContainer>
-              <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                Карта
-              </div>
-            </div>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-dark-hover">
-              <MapPin className="w-12 h-12 text-text-muted" />
-            </div>
-          )
+        {mediaLoading ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : photos.length === 0 ? (
+          <div className="w-full h-full flex items-center justify-center bg-dark-hover">
+            <MapPin className="w-12 h-12 text-text-muted" />
+          </div>
         ) : (
-          // Show media
           <>
             {currentMedia.media_type === 'photo' ? (
               <img
@@ -223,19 +176,41 @@ export default function ProblemsPage() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const { data: problemsData, isLoading } = useProblems({
-    limit: 100,
+  const { data: problemsData, isLoading, hasNextPage, fetchNextPage } = useInfiniteProblems({
     status: statusFilter || undefined,
-    category: categoryFilter || undefined,
-    sort_by: sortFilter as any,
+    problemType: categoryFilter || undefined,
   })
-  const problems = problemsData?.items || []
+  const problems = problemsData?.pages.flatMap(page => page.items) || []
 
   // Get unique values for filters
   const uniqueCountries = Array.from(new Set(problems.map(p => p.country).filter(Boolean)))
   const uniqueCities = Array.from(new Set(problems.map(p => p.city).filter(Boolean)))
   const uniqueDistricts = Array.from(new Set(problems.map(p => p.district).filter(Boolean)))
+
+  // Calculate total for display
+  const total = problemsData?.pages[0]?.total || 0
+
+  // Infinite scroll observer
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [target] = entries
+    if (target.isIntersecting && hasNextPage && !isLoading) {
+      fetchNextPage()
+    }
+  }, [hasNextPage, fetchNextPage, isLoading])
+
+  useEffect(() => {
+    const element = loadMoreRef.current
+    if (!element) return
+
+    const observer = new IntersectionObserver(handleObserver, {
+      threshold: 0.1,
+    })
+
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [handleObserver])
 
   // Client-side filtering
   let filteredProblems = problems
@@ -319,7 +294,7 @@ export default function ProblemsPage() {
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-text-primary mb-2">{getFilterLabel()}</h1>
               <p className="text-text-secondary">
-                {filteredProblems.length} {filteredProblems.length === 1 ? 'проблема' : 'проблем'} найдено
+                {total} {total === 1 ? 'проблема' : 'проблем'} найдено
               </p>
             </div>
 
@@ -420,11 +395,18 @@ export default function ProblemsPage() {
                 <p className="text-text-secondary text-lg">Проблемы не найдены</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredProblems.map((problem) => (
-                  <ProblemCard key={problem.entity_id} problem={problem} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredProblems.map((problem) => (
+                    <ProblemCard key={problem.entity_id} problem={problem} />
+                  ))}
+                </div>
+                <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+                  {isLoading && (
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  )}
+                </div>
+              </>
             )}
           </div>
 

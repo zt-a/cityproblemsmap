@@ -62,6 +62,8 @@ export class ReportsService {
      * Get Moderation Queue
      * Очередь модерации жалоб.
      * Доступно только модераторам и админам.
+     * Показывает только reports на существующие объекты.
+     * Использует SQL JOIN для гарантии валидности.
      * @param statusFilter Фильтр по статусу
      * @param targetType Фильтр по типу цели
      * @param offset

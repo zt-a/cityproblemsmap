@@ -65,6 +65,7 @@ export type { ProblemStatusUpdate } from './models/ProblemStatusUpdate';
 export type { ProblemTrend } from './models/ProblemTrend';
 export { ProblemType } from './models/ProblemType';
 export type { ProblemTypeStats } from './models/ProblemTypeStats';
+export type { ProblemUpdate } from './models/ProblemUpdate';
 export type { RefreshRequest } from './models/RefreshRequest';
 export type { RejectProblemRequest } from './models/RejectProblemRequest';
 export type { ReportCreate } from './models/ReportCreate';
